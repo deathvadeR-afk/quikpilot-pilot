@@ -1,4 +1,5 @@
 import { createGroup } from "./ledger.js";
+import { ValidationError } from "./validation.js";
 
 /** In-memory store. One process, one dataset — this is a pilot application. */
 const groups = new Map();

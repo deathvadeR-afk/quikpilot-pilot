@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createGroup, addExpense, computeBalances, assertBalanced, settleUp } from "./ledger.js";
+import { ValidationError } from "./validation.js";
 
 function group() {
   return createGroup("g", "Test", [
@@ -39,5 +40,42 @@ describe("settleUp", () => {
     expect(net.u2).toBe(-1000);
     expect(net.u3).toBe(-1000);
     expect(net.u1).toBe(2000);
+  });
+});
+
+describe("addExpense amount validation", () => {
+  it("[QP-QUIKSPL-28-1] Rejects negative integer input in a standard numeric field", () => {
+    const g = group();
+    expect(() =>
+      addExpense(g, { description: "Negative Int", amountMinor: -500, paidBy: "u1", participants: ["u1"] })
+    ).toThrow(ValidationError);
+  });
+
+  it("[QP-QUIKSPL-28-2] Rejects negative decimal input in a standard numeric field", () => {
+    const g = group();
+    expect(() =>
+      addExpense(g, { description: "Negative Dec", amountMinor: -1050, paidBy: "u1", participants: ["u1"] })
+    ).toThrow(ValidationError);
+  });
+
+  it("[QP-QUIKSPL-28-3] Accepts zero as valid input in a numeric field", () => {
+    const g = group();
+    const expense = addExpense(g, { description: "Zero Amount", amountMinor: 0, paidBy: "u1", participants: ["u1"] });
+    expect(expense).toBeDefined();
+    expect(expense.amountMinor).toBe(0);
+  });
+
+  it("[QP-QUIKSPL-28-4] Accepts positive integer input in a numeric field", () => {
+    const g = group();
+    const expense = addExpense(g, { description: "Positive Int", amountMinor: 1000, paidBy: "u1", participants: ["u1"] });
+    expect(expense).toBeDefined();
+    expect(expense.amountMinor).toBe(1000);
+  });
+
+  it("[QP-QUIKSPL-28-5] Existing positive data remains unchanged", () => {
+    const g = group();
+    addExpense(g, { description: "Existing Positive", amountMinor: 10000, paidBy: "u1", participants: ["u1"] });
+    const expense = g.expenses[0];
+    expect(expense.amountMinor).toBe(10000);
   });
 });

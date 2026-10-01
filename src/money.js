@@ -9,6 +9,7 @@
 export function toMinor(amount) {
   const n = typeof amount === "number" ? amount : Number(String(amount).trim());
   if (!Number.isFinite(n)) return null;
+  if (n < 0) return null; // Reject negative values
   return Math.round(n * 100);
 }
 

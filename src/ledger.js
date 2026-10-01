@@ -1,4 +1,5 @@
 import { splitEvenly } from "./money.js";
+import { ValidationError } from "./validation.js";
 
 /**
  * A group's ledger. Expenses go in; who-owes-whom comes out.
@@ -14,6 +15,9 @@ export function createGroup(id, name, members) {
 }
 
 export function addExpense(group, expense) {
+  if (expense.amountMinor < 0) {
+    throw new ValidationError("amount", "Negative numbers are not allowed");
+  }
   const entry = { id: `exp_${group.expenses.length + 1}`, ...expense, createdAt: new Date().toISOString() };
   group.expenses.push(entry);
   return entry;

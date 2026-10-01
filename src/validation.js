@@ -43,7 +43,13 @@ export function validateExpense(input, memberIds) {
   if (participants.length === 0) {
     throw new ValidationError("participants", "At least one participant is required.");
   }
+
+  const uniqueParticipants = new Set();
   for (const p of participants) {
+    if (uniqueParticipants.has(p)) {
+      throw new ValidationError("participants", "Duplicate participants are not allowed.");
+    }
+    uniqueParticipants.add(p);
     if (!memberIds.includes(p)) {
       throw new ValidationError("participants", `${p} is not a member of this group.`);
     }

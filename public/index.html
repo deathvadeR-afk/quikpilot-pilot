@@ -4,132 +4,275 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>QuikSplit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#faf9f7; --ink:#1c1b1a; --muted:#6b6863; --line:#e4e1dc; --accent:#2f6f4e; --neg:#a8443a; }
+  /* Tokens follow QuikIT's own: ink on warm paper, one floating panel, colour reserved for money status. */
+  :root {
+    --canvas:#f4f3ef; --panel:#ffffff; --ink:#0f0f0f; --muted:#5c5a55; --faint:#8a8880;
+    --rule:#e4e2dc; --wash:#f7f7f6; --focus:#0f0f0f;
+    --owed:#0f7a55; --owed-bg:#e7f5ee; --owes:#b3402f; --owes-bg:#fbeceA; --warn:#8a5a00; --warn-bg:#fdf3dc;
+    --shadow:0 20px 40px rgba(0,0,0,.10), 0 2px 10px rgba(0,0,0,.06);
+    --radius:18px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --canvas:#050505; --panel:#0c0c0c; --ink:#f4f4f4; --muted:#9a9a9a; --faint:#6b6b6f;
+      --rule:#242424; --wash:#101010; --focus:#f4f4f4;
+      --owed:#34d399; --owed-bg:#0e2a1f; --owes:#f08a78; --owes-bg:#2c1612; --warn:#fbbf24; --warn-bg:#2b2208;
+      --shadow:0 20px 40px rgba(0,0,0,.6);
+    }
+  }
   * { box-sizing:border-box; }
-  body { margin:0; font:16px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--bg); color:var(--ink); }
-  header { padding:28px 24px 18px; border-bottom:1px solid var(--line); }
-  h1 { margin:0; font-size:22px; letter-spacing:-.01em; }
-  header p { margin:4px 0 0; color:var(--muted); font-size:14px; }
-  main { max-width:760px; margin:0 auto; padding:24px; }
-  section { background:#fff; border:1px solid var(--line); border-radius:10px; padding:18px 20px; margin-bottom:18px; }
-  h2 { margin:0 0 12px; font-size:15px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:600; }
-  table { width:100%; border-collapse:collapse; font-size:15px; }
-  td, th { padding:7px 0; border-bottom:1px solid var(--line); text-align:left; font-weight:inherit; }
-  th { color:var(--muted); font-size:13px; }
-  tr:last-child td { border-bottom:none; }
-  .amt { text-align:right; font-variant-numeric:tabular-nums; }
-  .pos { color:var(--accent); } .neg { color:var(--neg); }
-  label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
-  input, select { width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:7px; font:inherit; background:#fff; }
-  .row { display:grid; grid-template-columns:1fr 150px; gap:12px; }
-  .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
-  button { margin-top:14px; padding:10px 18px; border:none; border-radius:7px; background:var(--ink); color:#fff; font:inherit; cursor:pointer; }
-  button:hover { opacity:.9; }
-  button.small { margin:0 0 0 8px; padding:3px 10px; font-size:13px; background:#fff; color:var(--ink); border:1px solid var(--line); }
-  .err { margin-top:10px; padding:9px 12px; border-radius:7px; background:#fdf0ee; color:var(--neg); font-size:14px; display:none; }
-  .settle { font-size:15px; padding:6px 0; }
-  .muted { color:var(--muted); font-size:13px; }
-  .hist td { vertical-align:top; }
-  #splitDetails { display:none; margin-top:6px; }
-  #splitDetails .detail { display:grid; grid-template-columns:1fr 140px; gap:12px; align-items:center; margin-top:6px; }
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; background:var(--canvas); color:var(--ink); font:15px/1.5 "Geist","Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; font-variant-numeric:tabular-nums; }
+  button, input, select { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:6px; }
+
+  .shell { display:grid; grid-template-columns:240px minmax(0,1fr); gap:24px; max-width:1240px; margin:0 auto; padding:24px; min-height:100vh; }
+
+  /* Left rail */
+  .rail { padding:6px 4px; position:sticky; top:24px; align-self:start; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:600; font-size:17px; letter-spacing:-.01em; margin-bottom:22px; }
+  .brand svg { flex:none; }
+  .rail h2 { margin:0 0 6px 10px; font-size:13px; font-weight:500; color:var(--muted); }
+  .groups { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px; }
+  .groups button { width:100%; display:flex; justify-content:space-between; align-items:center; gap:8px; text-align:left; padding:8px 10px; border:0; border-radius:9px; background:none; cursor:pointer; }
+  .groups button:hover { background:var(--rule); }
+  .groups button[aria-current="true"] { background:var(--ink); color:var(--panel); }
+  .groups .count { font-size:13px; opacity:.65; }
+
+  /* Floating panel */
+  .panel { background:var(--panel); border:1px solid var(--rule); border-radius:var(--radius); box-shadow:var(--shadow); min-width:0; }
+  .head { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:16px; padding:28px 32px 22px; border-bottom:1px solid var(--rule); }
+  .head h1 { margin:0; font-size:30px; line-height:1.1; font-weight:600; letter-spacing:-.025em; }
+  .people { display:flex; align-items:center; margin-top:12px; }
+  .people .av { margin-right:-6px; box-shadow:0 0 0 2px var(--panel); }
+  .people span.names { margin-left:16px; color:var(--muted); font-size:14px; }
+  .ledger { display:inline-flex; align-items:center; gap:8px; padding:7px 12px; border-radius:999px; font-size:13.5px; font-weight:500; background:var(--owed-bg); color:var(--owed); }
+  .ledger.off { background:var(--warn-bg); color:var(--warn); }
+  .ledger svg { flex:none; }
+
+  .grid { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); }
+  .block { padding:26px 32px; min-width:0; }
+  .grid > .block:nth-child(odd) { border-right:1px solid var(--rule); }
+  .full { border-top:1px solid var(--rule); }
+  h2.t { margin:0 0 4px; font-size:17px; font-weight:600; letter-spacing:-.01em; }
+  p.sub { margin:0 0 18px; color:var(--muted); font-size:14px; }
+
+  /* Avatars */
+  .av { width:30px; height:30px; border-radius:50%; display:inline-grid; place-items:center; flex:none; color:#fff; font-size:12px; font-weight:600; letter-spacing:.02em; }
+
+  /* Balance spine */
+  .spine { display:flex; flex-direction:column; gap:14px; }
+  .who { display:grid; grid-template-columns:150px minmax(0,1fr) 108px; align-items:center; gap:12px; }
+  .who .name { display:flex; align-items:center; gap:10px; min-width:0; }
+  .who .name span:last-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .track { position:relative; height:16px; border-radius:8px; background:var(--wash); }
+  .track::after { content:""; position:absolute; left:50%; top:-5px; bottom:-5px; width:2px; margin-left:-1px; background:var(--ink); border-radius:1px; }
+  .bar { position:absolute; top:0; bottom:0; border-radius:8px; transform-origin:var(--origin); animation:grow .7s cubic-bezier(.2,.8,.2,1) both; }
+  .bar.pos { left:50%; background:var(--owed); --origin:left; }
+  .bar.neg { right:50%; background:var(--owes); --origin:right; }
+  @keyframes grow { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+  .val { text-align:right; font-weight:500; }
+  .val.pos { color:var(--owed); } .val.neg { color:var(--owes); } .val.unk { color:var(--warn); }
+  .axis { display:grid; grid-template-columns:150px minmax(0,1fr) 108px; gap:12px; margin-top:2px; font-size:12.5px; color:var(--faint); }
+  .axis div { display:flex; justify-content:space-between; }
+
+  /* Settle up */
+  .pays { display:flex; flex-direction:column; }
+  .pay { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 0; border-bottom:1px solid var(--rule); }
+  .pay:last-child { border-bottom:0; }
+  .pay .line { display:flex; align-items:center; gap:10px; min-width:0; }
+  .pay .line .text { min-width:0; }
+  .pay .amt { font-weight:600; font-size:16px; }
+  .pay .btn { white-space:nowrap; }
+  .square { display:flex; align-items:center; gap:10px; color:var(--muted); padding:8px 0; }
+
+  /* Buttons */
+  .btn { border:1px solid var(--ink); background:var(--ink); color:var(--panel); padding:9px 16px; border-radius:9px; cursor:pointer; font-weight:500; }
+  .btn:hover { opacity:.88; }
+  .btn.sm { padding:5px 11px; font-size:13px; }
+  .btn.ghost { background:transparent; color:var(--ink); border-color:var(--rule); }
+  .btn.ghost:hover { background:var(--wash); opacity:1; }
+  .btn.quiet { border:0; background:none; color:var(--muted); padding:4px 8px; }
+  .btn.quiet:hover { color:var(--owes); background:var(--owes-bg); opacity:1; }
+  .btn:disabled { opacity:.5; cursor:default; }
+
+  /* Fields */
+  label, .lbl { display:block; font-size:13px; font-weight:500; color:var(--muted); margin:0 0 5px; }
+  input, select { width:100%; padding:9px 11px; border:1px solid var(--rule); border-radius:9px; background:var(--panel); }
+  input:hover, select:hover { border-color:var(--faint); }
+  .f { margin-bottom:14px; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .money { display:grid; grid-template-columns:minmax(0,1fr) 92px; gap:8px; }
+  .seg { display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--rule); border-radius:9px; padding:3px; gap:3px; background:var(--wash); }
+  .seg button { border:0; background:none; padding:6px 4px; border-radius:7px; cursor:pointer; font-size:13.5px; color:var(--muted); }
+  .seg button[aria-pressed="true"] { background:var(--panel); color:var(--ink); font-weight:500; box-shadow:0 1px 3px rgba(0,0,0,.14); }
+  .split { margin:12px 0 4px; display:none; }
+  .split .row { display:grid; grid-template-columns:minmax(0,1fr) 104px; align-items:center; gap:10px; margin-bottom:8px; }
+  .split .row .name { display:flex; align-items:center; gap:8px; min-width:0; }
+  .hint { font-size:13px; color:var(--muted); margin-top:6px; }
+  .hint.bad { color:var(--warn); }
+  .err { display:none; margin:12px 0 0; padding:10px 12px; border-radius:9px; background:var(--owes-bg); color:var(--owes); font-size:14px; }
+
+  /* Expenses */
+  .filters { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:6px; }
+  .filters label { margin-bottom:3px; font-size:12.5px; }
+  .hist { list-style:none; margin:0; padding:0; }
+  .hist li { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--rule); }
+  .hist .d { font-weight:500; overflow:hidden; text-overflow:ellipsis; }
+  .hist .m { display:flex; gap:8px; align-items:center; margin-top:2px; font-size:13px; color:var(--muted); }
+  .chip { padding:1px 8px; border-radius:999px; background:var(--wash); border:1px solid var(--rule); font-size:12px; color:var(--muted); }
+  .hist .a { text-align:right; font-weight:500; }
+  .hist .a small { display:block; color:var(--faint); font-weight:400; font-size:12.5px; }
+  .foot { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; }
+  .foot .info { color:var(--muted); font-size:14px; }
+  .empty { padding:22px 0; color:var(--muted); }
+
+  /* Spending */
+  .spend { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.2fr); gap:36px; }
+  .cats { display:flex; flex-direction:column; gap:12px; }
+  .cat .top { display:flex; justify-content:space-between; font-size:14px; margin-bottom:5px; }
+  .cat .top span:first-child { text-transform:capitalize; }
+  .meter { height:6px; border-radius:3px; background:var(--wash); overflow:hidden; }
+  .meter i { display:block; height:100%; background:var(--ink); border-radius:3px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th { font-weight:500; color:var(--muted); font-size:13px; text-align:right; padding:0 0 8px; }
+  th:first-child, td:first-child { text-align:left; }
+  td { padding:9px 0; border-top:1px solid var(--rule); text-align:right; }
+  td:first-child { display:flex; align-items:center; gap:8px; }
+
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+  @media (max-width: 1000px) {
+    .shell { grid-template-columns:1fr; padding:14px; }
+    .rail { position:static; padding:0 2px; }
+    .brand { margin-bottom:12px; }
+    .rail h2 { display:none; }
+    .groups { flex-direction:row; overflow-x:auto; padding-bottom:4px; }
+    .groups button { white-space:nowrap; width:auto; }
+    .head, .block { padding-left:20px; padding-right:20px; }
+    .grid { grid-template-columns:1fr; }
+    .grid > .block:nth-child(odd) { border-right:0; }
+    .grid > .block + .block { border-top:1px solid var(--rule); }
+    .spend { grid-template-columns:1fr; gap:24px; }
+    .who, .axis { grid-template-columns:110px minmax(0,1fr) 92px; }
+  }
+  @media (max-width: 520px) {
+    .head h1 { font-size:25px; }
+    .filters { grid-template-columns:1fr 1fr; }
+    .filters > div:first-child { grid-column:1 / -1; }
+    .two { grid-template-columns:1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) { .bar { animation:none; } * { scroll-behavior:auto; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>QuikSplit</h1>
-  <p>Shared expenses, settled honestly.</p>
-</header>
-<main>
-  <section>
-    <h2>Group</h2>
-    <select id="group"></select>
-  </section>
-
-  <section>
-    <h2>Balances</h2>
-    <table id="balances"></table>
-  </section>
-
-  <section>
-    <h2>Settle up</h2>
-    <div id="settlements"></div>
-  </section>
-
-  <section>
-    <h2>Spending</h2>
-    <table id="categories"></table>
-    <div style="height:14px"></div>
-    <table id="summary"></table>
-  </section>
-
-  <section>
-    <h2>Expenses</h2>
-    <div class="row3">
-      <div>
-        <label for="fCategory">Category</label>
-        <select id="fCategory"><option value="">All</option></select>
-      </div>
-      <div>
-        <label for="fFrom">From</label>
-        <input id="fFrom" type="date">
-      </div>
-      <div>
-        <label for="fTo">To</label>
-        <input id="fTo" type="date">
-      </div>
+<div class="shell">
+  <nav class="rail" aria-label="Groups">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect width="26" height="26" rx="7" fill="currentColor"/><path d="M7 9.5h12M7 16.5h12M13 6v14" stroke="var(--panel)" stroke-width="2" stroke-linecap="round"/></svg>
+      QuikSplit
     </div>
-    <table id="history" class="hist"></table>
-    <div class="muted" id="pageInfo"></div>
-    <button id="more" style="display:none">Load more</button>
-  </section>
+    <h2>Groups</h2>
+    <ul class="groups" id="groups"></ul>
+  </nav>
 
-  <section>
-    <h2>Add an expense</h2>
-    <label for="desc">Description</label>
-    <input id="desc" placeholder="Dinner at Gunpowder">
-    <div class="row">
+  <main class="panel">
+    <header class="head">
       <div>
-        <label for="paidBy">Paid by</label>
-        <select id="paidBy"></select>
+        <h1 id="title">QuikSplit</h1>
+        <div class="people" id="people"></div>
       </div>
-      <div>
-        <label for="amount">Amount</label>
-        <input id="amount" placeholder="0.00" inputmode="decimal">
-      </div>
+      <div class="ledger" id="ledger" role="status"></div>
+    </header>
+
+    <div class="grid">
+      <section class="block" aria-labelledby="h-bal">
+        <h2 class="t" id="h-bal">Balances</h2>
+        <p class="sub">Right of the line, they are owed. Left, they owe.</p>
+        <div class="spine" id="balances"></div>
+      </section>
+
+      <section class="block" aria-labelledby="h-settle">
+        <h2 class="t" id="h-settle">Settle up</h2>
+        <p class="sub">The fewest sensible payments to clear every balance.</p>
+        <div class="pays" id="settlements"></div>
+      </section>
+
+      <section class="block" aria-labelledby="h-exp">
+        <h2 class="t" id="h-exp">Expenses</h2>
+        <p class="sub">Newest first.</p>
+        <div class="filters">
+          <div><label for="fCategory">Category</label><select id="fCategory"><option value="">All</option></select></div>
+          <div><label for="fFrom">From</label><input id="fFrom" type="date"></div>
+          <div><label for="fTo">To</label><input id="fTo" type="date"></div>
+        </div>
+        <ul class="hist" id="history"></ul>
+        <div class="foot">
+          <div class="info" id="pageInfo"></div>
+          <button class="btn ghost sm" id="more" style="display:none">Load more</button>
+        </div>
+      </section>
+
+      <section class="block" aria-labelledby="h-add">
+        <h2 class="t" id="h-add">Add an expense</h2>
+        <p class="sub">Who paid, how much, and how it is shared.</p>
+        <div class="f"><label for="desc">What was it for</label><input id="desc" placeholder="Dinner at Gunpowder" autocomplete="off"></div>
+        <div class="f">
+          <label for="amount">Amount</label>
+          <div class="money"><input id="amount" placeholder="0.00" inputmode="decimal" autocomplete="off"><select id="currency" aria-label="Currency"></select></div>
+        </div>
+        <div class="two">
+          <div class="f"><label for="paidBy">Paid by</label><select id="paidBy"></select></div>
+          <div class="f"><label for="category">Category</label><select id="category"></select></div>
+        </div>
+        <div class="f">
+          <span class="lbl" id="splitLbl">Split</span>
+          <div class="seg" role="group" aria-labelledby="splitLbl" id="seg">
+            <button type="button" data-type="equal" aria-pressed="true">Equally</button>
+            <button type="button" data-type="exact" aria-pressed="false">Exact</button>
+            <button type="button" data-type="percent" aria-pressed="false">Percent</button>
+            <button type="button" data-type="shares" aria-pressed="false">Shares</button>
+          </div>
+          <div class="split" id="splitDetails"></div>
+          <div class="hint" id="splitHint" aria-live="polite"></div>
+        </div>
+        <button class="btn" id="add">Add expense</button>
+        <div class="err" id="err" role="alert"></div>
+      </section>
     </div>
-    <div class="row3">
-      <div>
-        <label for="category">Category</label>
-        <select id="category"></select>
+
+    <section class="block full" aria-labelledby="h-spend">
+      <h2 class="t" id="h-spend">Spending</h2>
+      <p class="sub">Where the money went, and what each person has put in and taken out.</p>
+      <div class="spend">
+        <div class="cats" id="categories"></div>
+        <table id="summary"></table>
       </div>
-      <div>
-        <label for="currency">Currency</label>
-        <select id="currency"></select>
-      </div>
-      <div>
-        <label for="splitType">Split</label>
-        <select id="splitType">
-          <option value="equal">Equally</option>
-          <option value="exact">Exact amounts</option>
-          <option value="percent">Percentages</option>
-          <option value="shares">Shares</option>
-        </select>
-      </div>
-    </div>
-    <div id="splitDetails"></div>
-    <button id="add">Add expense</button>
-    <div class="err" id="err"></div>
-  </section>
-</main>
+    </section>
+  </main>
+</div>
+
 <script>
 const $ = (id) => document.getElementById(id);
 const CATEGORIES = ["food", "travel", "stay", "entertainment", "other"];
 const CURRENCIES = ["INR", "USD", "EUR", "GBP", "AED"];
 const PAGE_SIZE = 10;
+const AVATARS = ["#6366F1", "#EC4899", "#10B981", "#F59E0B", "#3B82F6"];
 let current = null;
 let page = 1;
 let shown = [];
+let splitType = "equal";
+
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const colour = (id) => AVATARS[[...String(id)].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATARS.length];
+const initials = (name) => String(name).trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+const avatar = (m) => `<span class="av" style="background:${colour(m.id)}" aria-hidden="true">${esc(initials(m.name))}</span>`;
+const inr = (minor) => "₹" + (Math.abs(minor) / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const day = (iso) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 
 function showError(message) {
   $("err").textContent = message;
@@ -138,42 +281,98 @@ function showError(message) {
 
 async function loadGroups() {
   const groups = await (await fetch("/api/groups")).json();
-  $("group").innerHTML = groups.map(g => `<option value="${g.id}">${g.name}</option>`).join("");
-  $("category").innerHTML = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
-  $("fCategory").innerHTML = `<option value="">All</option>` + CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
-  $("currency").innerHTML = CURRENCIES.map(c => `<option value="${c}">${c}</option>`).join("");
+  $("groups").innerHTML = groups.map((g) =>
+    `<li><button type="button" data-id="${esc(g.id)}"><span>${esc(g.name)}</span><span class="count">${g.memberCount}</span></button></li>`).join("");
+  document.querySelectorAll("#groups button").forEach((b) => { b.onclick = () => loadGroup(b.dataset.id); });
+  $("category").innerHTML = CATEGORIES.map((c) => `<option value="${c}">${c[0].toUpperCase() + c.slice(1)}</option>`).join("");
+  $("fCategory").innerHTML = `<option value="">All</option>` + CATEGORIES.map((c) => `<option value="${c}">${c[0].toUpperCase() + c.slice(1)}</option>`).join("");
+  $("currency").innerHTML = CURRENCIES.map((c) => `<option value="${c}">${c}</option>`).join("");
   await loadGroup(groups[0].id);
 }
 
 async function loadGroup(id) {
   current = await (await fetch(`/api/groups/${id}`)).json();
-  const nameOf = (uid) => current.members.find(m => m.id === uid)?.name ?? uid;
+  const nameOf = (uid) => current.members.find((m) => m.id === uid)?.name ?? uid;
+  const memberOf = (uid) => current.members.find((m) => m.id === uid) ?? { id: uid, name: uid };
 
-  $("balances").innerHTML = current.members.map(m => {
-    const v = current.balancesDisplay[m.id];
-    const cls = current.balances[m.id] >= 0 ? "pos" : "neg";
-    return `<tr><td>${m.name}</td><td class="amt ${cls}">${v}</td></tr>`;
-  }).join("");
+  document.querySelectorAll("#groups button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.id === current.id)));
+  $("title").textContent = current.name;
+  $("people").innerHTML = current.members.map(avatar).join("") +
+    `<span class="names">${current.members.map((m) => esc(m.name)).join(", ")}</span>`;
+
+  renderBalances();
 
   $("settlements").innerHTML = current.settlements.length
-    ? current.settlements.map(s =>
-        `<div class="settle">${nameOf(s.from)} pays ${nameOf(s.to)} <strong>${(s.amountMinor/100).toFixed(2)}</strong>` +
-        `<button class="small" data-from="${s.from}" data-to="${s.to}" data-amt="${(s.amountMinor/100).toFixed(2)}">Mark paid</button></div>`).join("")
-    : `<div class="settle" style="color:var(--muted)">Everyone is square.</div>`;
-  document.querySelectorAll("#settlements button").forEach(b => { b.onclick = () => markPaid(b.dataset); });
+    ? current.settlements.map((s) =>
+        `<div class="pay"><div class="line">${avatar(memberOf(s.from))}<div class="text"><div>${esc(nameOf(s.from))} pays ${esc(nameOf(s.to))}</div><div class="amt">${inr(s.amountMinor)}</div></div></div>` +
+        `<button class="btn ghost sm" type="button" data-from="${esc(s.from)}" data-to="${esc(s.to)}" data-amt="${(s.amountMinor / 100).toFixed(2)}">Mark paid</button></div>`).join("")
+    : `<div class="square">${avatar({ id: "ok", name: "✓" }).replace(/background:[^;]+/, "background:var(--owed)")}Everyone is square.</div>`;
+  document.querySelectorAll("#settlements button").forEach((b) => { b.onclick = () => markPaid(b.dataset); });
 
-  $("paidBy").innerHTML = current.members.map(m => `<option value="${m.id}">${m.name}</option>`).join("");
+  $("paidBy").innerHTML = current.members.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("");
   renderSplitDetails();
   await loadSummary();
   await loadHistory(true);
 }
 
+/** Each member's balance as a bar from a zero line, and a check that the whole ledger sums to zero. */
+function renderBalances() {
+  const rows = current.members.map((m) => ({ m, v: current.balances[m.id] }));
+  const known = rows.filter((r) => Number.isFinite(r.v));
+  const max = Math.max(1, ...known.map((r) => Math.abs(r.v)));
+
+  $("balances").innerHTML = rows.map(({ m, v }) => {
+    if (!Number.isFinite(v)) {
+      return `<div class="who"><div class="name">${avatar(m)}<span>${esc(m.name)}</span></div><div class="track"></div><div class="val unk">Unknown</div></div>`;
+    }
+    const pct = Math.max(v === 0 ? 0 : 1.5, (Math.abs(v) / max) * 50);
+    const cls = v > 0 ? "pos" : "neg";
+    const words = v === 0 ? "settled" : v > 0 ? "is owed" : "owes";
+    return `<div class="who"><div class="name">${avatar(m)}<span>${esc(m.name)}</span></div>` +
+      `<div class="track">${v === 0 ? "" : `<div class="bar ${cls}" style="width:${pct}%"></div>`}</div>` +
+      `<div class="val ${v === 0 ? "" : cls}"><span class="sr">${esc(m.name)} ${words} </span>${v < 0 ? "−" : ""}${inr(v)}</div></div>`;
+  }).join("") +
+    `<div class="axis"><span></span><div><span>owes</span><span>owed</span></div><span></span></div>`;
+
+  const unknown = rows.length - known.length;
+  const net = known.reduce((a, r) => a + r.v, 0);
+  const ledger = $("ledger");
+  if (unknown > 0) {
+    ledger.className = "ledger off";
+    ledger.textContent = `${unknown} balance${unknown > 1 ? "s" : ""} can’t be worked out`;
+  } else if (net !== 0) {
+    ledger.className = "ledger off";
+    ledger.textContent = `Ledger is off by ${inr(net)}`;
+  } else {
+    ledger.className = "ledger";
+    ledger.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Ledger balances to zero`;
+  }
+}
+
+/** A section that cannot load says so, rather than leaving the previous group's numbers under this group's name. */
+function sectionFailed(what) {
+  return `<div class="empty">${what} can’t be shown for this group right now. The server could not work it out.</div>`;
+}
+
 async function loadSummary() {
-  const s = await (await fetch(`/api/groups/${current.id}/summary`)).json();
-  $("categories").innerHTML = `<tr><th>Category</th><th class="amt">Spent</th></tr>` +
-    s.categories.map(c => `<tr><td>${c.category}</td><td class="amt">${c.totalDisplay}</td></tr>`).join("");
-  $("summary").innerHTML = `<tr><th>Member</th><th class="amt">Paid</th><th class="amt">Share</th><th class="amt">Balance</th></tr>` +
-    s.members.map(m => `<tr><td>${m.name}</td><td class="amt">${m.paidDisplay}</td><td class="amt">${m.owedDisplay}</td><td class="amt">${m.balanceDisplay}</td></tr>`).join("");
+  const r = await fetch(`/api/groups/${current.id}/summary`);
+  if (!r.ok) {
+    $("categories").innerHTML = sectionFailed("Spending");
+    $("summary").innerHTML = "";
+    return;
+  }
+  const s = await r.json();
+  const top = Math.max(1, ...s.categories.map((c) => c.totalMinor));
+  $("categories").innerHTML = s.categories.length
+    ? s.categories.map((c) =>
+        `<div class="cat"><div class="top"><span>${esc(c.category)}</span><span>${inr(c.totalMinor)}</span></div>` +
+        `<div class="meter"><i style="width:${(c.totalMinor / top) * 100}%"></i></div></div>`).join("")
+    : `<div class="empty">Nothing spent yet. Add the first expense.</div>`;
+  const memberOf = (id) => current.members.find((m) => m.id === id) ?? { id, name: id };
+  $("summary").innerHTML = `<thead><tr><th>Member</th><th>Paid</th><th>Share</th><th>Balance</th></tr></thead><tbody>` +
+    s.members.map((m) =>
+      `<tr><td>${avatar(memberOf(m.id))}${esc(m.name)}</td><td>${inr(m.paidMinor)}</td><td>${inr(m.owedMinor)}</td>` +
+      `<td>${m.balanceMinor < 0 ? "−" : ""}${inr(m.balanceMinor)}</td></tr>`).join("") + `</tbody>`;
 }
 
 async function loadHistory(reset) {
@@ -182,13 +381,27 @@ async function loadHistory(reset) {
   if ($("fCategory").value) q.set("category", $("fCategory").value);
   if ($("fFrom").value) q.set("from", $("fFrom").value);
   if ($("fTo").value) q.set("to", $("fTo").value);
-  const res = await (await fetch(`/api/groups/${current.id}/expenses?${q}`)).json();
+  const r = await fetch(`/api/groups/${current.id}/expenses?${q}`);
+  if (!r.ok) {
+    $("history").innerHTML = `<li class="empty" style="display:block">${sectionFailed("The expense list")}</li>`;
+    $("pageInfo").textContent = "";
+    $("more").style.display = "none";
+    return;
+  }
+  const res = await r.json();
   shown = shown.concat(res.items);
-  $("history").innerHTML = shown.map(e =>
-    `<tr><td>${e.description}<div class="muted">${e.category} &middot; ${e.createdAt.slice(0, 10)}</div></td>` +
-    `<td class="amt">${e.originalDisplay}</td>` +
-    `<td class="amt"><button class="small" data-id="${e.id}">Delete</button></td></tr>`).join("");
-  document.querySelectorAll("#history button").forEach(b => { b.onclick = () => removeExpense(b.dataset.id); });
+  $("history").innerHTML = shown.length
+    ? shown.map((e) => {
+        const foreign = e.original && e.original.currency !== "INR";
+        const entered = foreign
+          ? `${(e.original.amountMinor / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${e.original.currency}`
+          : inr(e.amountMinor);
+        return `<li><div><div class="d">${esc(e.description)}</div><div class="m"><span class="chip">${esc(e.category ?? "other")}</span><span>${esc(day(e.createdAt))}</span></div></div>` +
+          `<div class="a">${esc(entered)}${foreign ? `<small>${inr(e.amountMinor)}</small>` : ""}</div>` +
+          `<button class="btn quiet sm" type="button" data-id="${esc(e.id)}" aria-label="Delete ${esc(e.description)}">Delete</button></li>`;
+      }).join("")
+    : `<li class="empty" style="display:block">No expenses match. Clear a filter or add one.</li>`;
+  document.querySelectorAll("#history button").forEach((b) => { b.onclick = () => removeExpense(b.dataset.id); });
   $("pageInfo").textContent = `Showing ${shown.length} of ${res.total}`;
   $("more").style.display = res.hasMore ? "inline-block" : "none";
 }
@@ -207,26 +420,47 @@ async function markPaid({ from, to, amt }) {
   await loadGroup(current.id);
 }
 
+/** Per-member inputs for the non-equal splits, with a running total so nobody has to add up in their head. */
 function renderSplitDetails() {
-  const type = $("splitType").value;
   const box = $("splitDetails");
-  if (type === "equal" || !current) { box.style.display = "none"; box.innerHTML = ""; return; }
-  const hint = { exact: "amount", percent: "%", shares: "shares" }[type];
+  document.querySelectorAll("#seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.type === splitType)));
+  if (splitType === "equal" || !current) { box.style.display = "none"; box.innerHTML = ""; updateHint(); return; }
+  const unit = { exact: "Amount", percent: "%", shares: "Shares" }[splitType];
   box.style.display = "block";
-  box.innerHTML = current.members.map(m =>
-    `<div class="detail"><span>${m.name}</span><input data-member="${m.id}" placeholder="${hint}"></div>`).join("");
+  box.innerHTML = current.members.map((m) =>
+    `<div class="row"><div class="name">${avatar(m)}<span>${esc(m.name)}</span></div>` +
+    `<input data-member="${esc(m.id)}" placeholder="${unit}" inputmode="decimal" aria-label="${esc(m.name)} ${unit}"></div>`).join("");
+  box.querySelectorAll("input").forEach((i) => { i.oninput = updateHint; });
+  updateHint();
 }
 
-$("group").onchange = (e) => loadGroup(e.target.value);
-$("splitType").onchange = renderSplitDetails;
+function updateHint() {
+  const hint = $("splitHint");
+  hint.className = "hint";
+  if (splitType === "equal") { hint.textContent = "Everyone in the group shares it equally."; return; }
+  const values = [...document.querySelectorAll("#splitDetails input")].map((i) => parseFloat(i.value) || 0);
+  const sum = values.reduce((a, b) => a + b, 0);
+  if (splitType === "percent") {
+    hint.textContent = `${+sum.toFixed(2)}% of 100% assigned`;
+    if (Math.round(sum * 100) !== 10000) hint.classList.add("bad");
+  } else if (splitType === "exact") {
+    const total = parseFloat($("amount").value) || 0;
+    hint.textContent = `${$("currency").value} ${sum.toFixed(2)} of ${total.toFixed(2)} assigned`;
+    if (Math.round(sum * 100) !== Math.round(total * 100)) hint.classList.add("bad");
+  } else {
+    hint.textContent = `${sum} share${sum === 1 ? "" : "s"} in total`;
+  }
+}
+
+document.querySelectorAll("#seg button").forEach((b) => { b.onclick = () => { splitType = b.dataset.type; renderSplitDetails(); }; });
 $("more").onclick = () => { page += 1; loadHistory(false); };
-["fCategory", "fFrom", "fTo"].forEach(id => { $(id).onchange = () => loadHistory(true); });
+["fCategory", "fFrom", "fTo"].forEach((id) => { $(id).onchange = () => loadHistory(true); });
+["amount", "currency"].forEach((id) => { $(id).oninput = updateHint; });
 
 $("add").onclick = async () => {
   $("err").style.display = "none";
-  const splitType = $("splitType").value;
   const splitDetails = {};
-  document.querySelectorAll("#splitDetails input").forEach(i => { splitDetails[i.dataset.member] = i.value; });
+  document.querySelectorAll("#splitDetails input").forEach((i) => { splitDetails[i.dataset.member] = i.value; });
   const res = await fetch(`/api/groups/${current.id}/expenses`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -238,7 +472,7 @@ $("add").onclick = async () => {
       currency: $("currency").value,
       splitType,
       splitDetails: splitType === "equal" ? undefined : splitDetails,
-      participants: current.members.map(m => m.id),
+      participants: current.members.map((m) => m.id),
     }),
   });
   if (!res.ok) {

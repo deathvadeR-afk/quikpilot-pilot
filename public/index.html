@@ -15,17 +15,24 @@
   section { background:#fff; border:1px solid var(--line); border-radius:10px; padding:18px 20px; margin-bottom:18px; }
   h2 { margin:0 0 12px; font-size:15px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:600; }
   table { width:100%; border-collapse:collapse; font-size:15px; }
-  td { padding:7px 0; border-bottom:1px solid var(--line); }
+  td, th { padding:7px 0; border-bottom:1px solid var(--line); text-align:left; font-weight:inherit; }
+  th { color:var(--muted); font-size:13px; }
   tr:last-child td { border-bottom:none; }
   .amt { text-align:right; font-variant-numeric:tabular-nums; }
   .pos { color:var(--accent); } .neg { color:var(--neg); }
   label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
   input, select { width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:7px; font:inherit; background:#fff; }
   .row { display:grid; grid-template-columns:1fr 150px; gap:12px; }
+  .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
   button { margin-top:14px; padding:10px 18px; border:none; border-radius:7px; background:var(--ink); color:#fff; font:inherit; cursor:pointer; }
   button:hover { opacity:.9; }
+  button.small { margin:0 0 0 8px; padding:3px 10px; font-size:13px; background:#fff; color:var(--ink); border:1px solid var(--line); }
   .err { margin-top:10px; padding:9px 12px; border-radius:7px; background:#fdf0ee; color:var(--neg); font-size:14px; display:none; }
   .settle { font-size:15px; padding:6px 0; }
+  .muted { color:var(--muted); font-size:13px; }
+  .hist td { vertical-align:top; }
+  #splitDetails { display:none; margin-top:6px; }
+  #splitDetails .detail { display:grid; grid-template-columns:1fr 140px; gap:12px; align-items:center; margin-top:6px; }
 </style>
 </head>
 <body>
@@ -50,6 +57,34 @@
   </section>
 
   <section>
+    <h2>Spending</h2>
+    <table id="categories"></table>
+    <div style="height:14px"></div>
+    <table id="summary"></table>
+  </section>
+
+  <section>
+    <h2>Expenses</h2>
+    <div class="row3">
+      <div>
+        <label for="fCategory">Category</label>
+        <select id="fCategory"><option value="">All</option></select>
+      </div>
+      <div>
+        <label for="fFrom">From</label>
+        <input id="fFrom" type="date">
+      </div>
+      <div>
+        <label for="fTo">To</label>
+        <input id="fTo" type="date">
+      </div>
+    </div>
+    <table id="history" class="hist"></table>
+    <div class="muted" id="pageInfo"></div>
+    <button id="more" style="display:none">Load more</button>
+  </section>
+
+  <section>
     <h2>Add an expense</h2>
     <label for="desc">Description</label>
     <input id="desc" placeholder="Dinner at Gunpowder">
@@ -63,17 +98,50 @@
         <input id="amount" placeholder="0.00" inputmode="decimal">
       </div>
     </div>
+    <div class="row3">
+      <div>
+        <label for="category">Category</label>
+        <select id="category"></select>
+      </div>
+      <div>
+        <label for="currency">Currency</label>
+        <select id="currency"></select>
+      </div>
+      <div>
+        <label for="splitType">Split</label>
+        <select id="splitType">
+          <option value="equal">Equally</option>
+          <option value="exact">Exact amounts</option>
+          <option value="percent">Percentages</option>
+          <option value="shares">Shares</option>
+        </select>
+      </div>
+    </div>
+    <div id="splitDetails"></div>
     <button id="add">Add expense</button>
     <div class="err" id="err"></div>
   </section>
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
+const CATEGORIES = ["food", "travel", "stay", "entertainment", "other"];
+const CURRENCIES = ["INR", "USD", "EUR", "GBP", "AED"];
+const PAGE_SIZE = 10;
 let current = null;
+let page = 1;
+let shown = [];
+
+function showError(message) {
+  $("err").textContent = message;
+  $("err").style.display = "block";
+}
 
 async function loadGroups() {
   const groups = await (await fetch("/api/groups")).json();
   $("group").innerHTML = groups.map(g => `<option value="${g.id}">${g.name}</option>`).join("");
+  $("category").innerHTML = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
+  $("fCategory").innerHTML = `<option value="">All</option>` + CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
+  $("currency").innerHTML = CURRENCIES.map(c => `<option value="${c}">${c}</option>`).join("");
   await loadGroup(groups[0].id);
 }
 
@@ -89,16 +157,76 @@ async function loadGroup(id) {
 
   $("settlements").innerHTML = current.settlements.length
     ? current.settlements.map(s =>
-        `<div class="settle">${nameOf(s.from)} pays ${nameOf(s.to)} <strong>${(s.amountMinor/100).toFixed(2)}</strong></div>`).join("")
+        `<div class="settle">${nameOf(s.from)} pays ${nameOf(s.to)} <strong>${(s.amountMinor/100).toFixed(2)}</strong>` +
+        `<button class="small" data-from="${s.from}" data-to="${s.to}" data-amt="${(s.amountMinor/100).toFixed(2)}">Mark paid</button></div>`).join("")
     : `<div class="settle" style="color:var(--muted)">Everyone is square.</div>`;
+  document.querySelectorAll("#settlements button").forEach(b => { b.onclick = () => markPaid(b.dataset); });
 
   $("paidBy").innerHTML = current.members.map(m => `<option value="${m.id}">${m.name}</option>`).join("");
+  renderSplitDetails();
+  await loadSummary();
+  await loadHistory(true);
+}
+
+async function loadSummary() {
+  const s = await (await fetch(`/api/groups/${current.id}/summary`)).json();
+  $("categories").innerHTML = `<tr><th>Category</th><th class="amt">Spent</th></tr>` +
+    s.categories.map(c => `<tr><td>${c.category}</td><td class="amt">${c.totalDisplay}</td></tr>`).join("");
+  $("summary").innerHTML = `<tr><th>Member</th><th class="amt">Paid</th><th class="amt">Share</th><th class="amt">Balance</th></tr>` +
+    s.members.map(m => `<tr><td>${m.name}</td><td class="amt">${m.paidDisplay}</td><td class="amt">${m.owedDisplay}</td><td class="amt">${m.balanceDisplay}</td></tr>`).join("");
+}
+
+async function loadHistory(reset) {
+  if (reset) { page = 1; shown = []; }
+  const q = new URLSearchParams({ page, pageSize: PAGE_SIZE });
+  if ($("fCategory").value) q.set("category", $("fCategory").value);
+  if ($("fFrom").value) q.set("from", $("fFrom").value);
+  if ($("fTo").value) q.set("to", $("fTo").value);
+  const res = await (await fetch(`/api/groups/${current.id}/expenses?${q}`)).json();
+  shown = shown.concat(res.items);
+  $("history").innerHTML = shown.map(e =>
+    `<tr><td>${e.description}<div class="muted">${e.category} &middot; ${e.createdAt.slice(0, 10)}</div></td>` +
+    `<td class="amt">${e.originalDisplay}</td>` +
+    `<td class="amt"><button class="small" data-id="${e.id}">Delete</button></td></tr>`).join("");
+  document.querySelectorAll("#history button").forEach(b => { b.onclick = () => removeExpense(b.dataset.id); });
+  $("pageInfo").textContent = `Showing ${shown.length} of ${res.total}`;
+  $("more").style.display = res.hasMore ? "inline-block" : "none";
+}
+
+async function removeExpense(id) {
+  await fetch(`/api/groups/${current.id}/expenses/${id}`, { method: "DELETE" });
+  await loadGroup(current.id);
+}
+
+async function markPaid({ from, to, amt }) {
+  await fetch(`/api/groups/${current.id}/payments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ from, to, amount: amt }),
+  });
+  await loadGroup(current.id);
+}
+
+function renderSplitDetails() {
+  const type = $("splitType").value;
+  const box = $("splitDetails");
+  if (type === "equal" || !current) { box.style.display = "none"; box.innerHTML = ""; return; }
+  const hint = { exact: "amount", percent: "%", shares: "shares" }[type];
+  box.style.display = "block";
+  box.innerHTML = current.members.map(m =>
+    `<div class="detail"><span>${m.name}</span><input data-member="${m.id}" placeholder="${hint}"></div>`).join("");
 }
 
 $("group").onchange = (e) => loadGroup(e.target.value);
+$("splitType").onchange = renderSplitDetails;
+$("more").onclick = () => { page += 1; loadHistory(false); };
+["fCategory", "fFrom", "fTo"].forEach(id => { $(id).onchange = () => loadHistory(true); });
 
 $("add").onclick = async () => {
   $("err").style.display = "none";
+  const splitType = $("splitType").value;
+  const splitDetails = {};
+  document.querySelectorAll("#splitDetails input").forEach(i => { splitDetails[i.dataset.member] = i.value; });
   const res = await fetch(`/api/groups/${current.id}/expenses`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -106,13 +234,16 @@ $("add").onclick = async () => {
       description: $("desc").value,
       amount: $("amount").value,
       paidBy: $("paidBy").value,
+      category: $("category").value,
+      currency: $("currency").value,
+      splitType,
+      splitDetails: splitType === "equal" ? undefined : splitDetails,
       participants: current.members.map(m => m.id),
     }),
   });
   if (!res.ok) {
     const e = await res.json();
-    $("err").textContent = e.error;
-    $("err").style.display = "block";
+    showError(e.error);
     return;
   }
   $("desc").value = ""; $("amount").value = "";

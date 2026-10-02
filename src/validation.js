@@ -1,4 +1,6 @@
 import { toMinor } from "./money.js";
+import { BASE_CURRENCY, convertToBase } from "./exchange.js";
+import { SPLIT_TYPES, weighted } from "./splits.js";
 
 export class ValidationError extends Error {
   constructor(field, message) {
@@ -7,6 +9,81 @@ export class ValidationError extends Error {
     this.field = field;
     this.status = 400;
   }
+}
+
+export const CATEGORIES = ["food", "travel", "stay", "entertainment", "other"];
+
+export function validateDescription(raw) {
+  const description = String(raw ?? "").trim();
+  if (description.length === 0) {
+    throw new ValidationError("description", "A description is required.");
+  }
+  if (description.length > 140) {
+    throw new ValidationError("description", "Description must be 140 characters or fewer.");
+  }
+  return description;
+}
+
+export function validateCategory(raw) {
+  if (raw === undefined || raw === null || raw === "") return "other";
+  const category = String(raw).trim().toLowerCase();
+  if (!CATEGORIES.includes(category)) {
+    throw new ValidationError("category", `Category must be one of: ${CATEGORIES.join(", ")}.`);
+  }
+  return category;
+}
+
+/**
+ * Validate how an expense is divided. `originalMinor` is the total in the
+ * currency it was entered in; the returned details are in base-currency minor
+ * units for `exact`, and as entered for `percent` and `shares`.
+ */
+function validateSplit(input, participants, originalMinor, baseMinor) {
+  const splitType = input.splitType === undefined || input.splitType === "" ? "equal" : input.splitType;
+  if (!SPLIT_TYPES.includes(splitType)) {
+    throw new ValidationError("splitType", `Split type must be one of: ${SPLIT_TYPES.join(", ")}.`);
+  }
+  if (splitType === "equal") return { splitType, splitDetails: undefined };
+
+  const raw = input.splitDetails;
+  if (!raw || typeof raw !== "object") {
+    throw new ValidationError("splitDetails", "Split details are required for this split type.");
+  }
+  for (const p of participants) {
+    if (raw[p] === undefined || raw[p] === null || raw[p] === "") {
+      throw new ValidationError("splitDetails", `A value is required for ${p}.`);
+    }
+  }
+
+  if (splitType === "exact") {
+    const entered = participants.map((p) => toMinor(raw[p]));
+    if (entered.some((v) => v === null)) {
+      throw new ValidationError("splitDetails", "Exact amounts must be numbers.");
+    }
+    if (entered.reduce((a, b) => a + b, 0) !== originalMinor) {
+      throw new ValidationError("splitDetails", "Exact amounts must add up to the total.");
+    }
+    const inBase = weighted(baseMinor, entered);
+    return { splitType, splitDetails: Object.fromEntries(participants.map((p, i) => [p, inBase[i]])) };
+  }
+
+  if (splitType === "percent") {
+    const pct = participants.map((p) => Number(raw[p]));
+    if (pct.some((v) => !Number.isFinite(v) || v < 0)) {
+      throw new ValidationError("splitDetails", "Percentages must be numbers.");
+    }
+    // Compared in hundredths of a percent so 33.33 + 33.33 + 33.34 is exactly 100.
+    if (pct.reduce((a, b) => a + Math.round(b * 100), 0) !== 10000) {
+      throw new ValidationError("splitDetails", "Percentages must add up to 100.");
+    }
+    return { splitType, splitDetails: Object.fromEntries(participants.map((p, i) => [p, pct[i]])) };
+  }
+
+  const weights = participants.map((p) => Number(raw[p]));
+  if (weights.some((v) => !Number.isInteger(v) || v <= 0)) {
+    throw new ValidationError("splitDetails", "Shares must be whole numbers greater than zero.");
+  }
+  return { splitType, splitDetails: Object.fromEntries(participants.map((p, i) => [p, weights[i]])) };
 }
 
 /**
@@ -19,19 +96,13 @@ export function validateExpense(input, memberIds) {
     throw new ValidationError("body", "An expense object is required.");
   }
 
-  const description = String(input.description ?? "").trim();
-  if (description.length === 0) {
-    throw new ValidationError("description", "A description is required.");
-  }
-  if (description.length > 140) {
-    throw new ValidationError("description", "Description must be 140 characters or fewer.");
-  }
+  const description = validateDescription(input.description);
 
-  const amountMinor = toMinor(input.amount);
-  if (amountMinor === null) {
+  const originalMinor = toMinor(input.amount);
+  if (originalMinor === null) {
     throw new ValidationError("amount", "Amount must be a number.");
   }
-  if (amountMinor < 0) {
+  if (originalMinor < 0) {
     throw new ValidationError("amount", "Negative numbers are not allowed.");
   }
 
@@ -55,5 +126,25 @@ export function validateExpense(input, memberIds) {
     }
   }
 
-  return { description, amountMinor, paidBy: input.paidBy, participants };
+  const category = validateCategory(input.category);
+
+  const currency =
+    input.currency === undefined || input.currency === "" ? BASE_CURRENCY : String(input.currency).trim();
+  if (currency.length !== 3) {
+    throw new ValidationError("currency", "Currency must be a 3-letter code.");
+  }
+  const amountMinor = convertToBase(originalMinor, currency);
+
+  const { splitType, splitDetails } = validateSplit(input, participants, originalMinor, amountMinor);
+
+  return {
+    description,
+    amountMinor,
+    paidBy: input.paidBy,
+    participants,
+    category,
+    splitType,
+    splitDetails,
+    original: { amountMinor: originalMinor, currency },
+  };
 }

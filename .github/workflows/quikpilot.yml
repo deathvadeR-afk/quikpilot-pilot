@@ -12,7 +12,7 @@
 # This file lives in YOUR repository, so QuikIT cannot update it. Any change
 # arrives as a new pull request.
 #
-# templateVersion: 8
+# templateVersion: 9
 # project: cmub758vp00bzxhri6iqbf0u1
 # ============================================================================
 name: QuikPilot
@@ -101,4 +101,13 @@ jobs:
           node-version: "20"
 
       - name: Run QuikPilot
-        run: npx --yes @quikit/quikpilot-runner@8.1.0
+        run: npx --yes @quikit/quikpilot-runner@9.0.0
+
+      - name: Keep the files of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quikpilot-failed-run
+          path: quikpilot-failure/
+          retention-days: 7
+          if-no-files-found: ignore

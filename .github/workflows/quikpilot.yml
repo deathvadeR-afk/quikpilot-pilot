@@ -101,7 +101,7 @@ jobs:
           node-version: "20"
 
       - name: Run QuikPilot
-        run: npx --yes @quikit/quikpilot-runner@9.1.0
+        run: npx --yes @quikit/quikpilot-runner@9.2.0-rc.2
 
       - name: Keep the files of a failed run
         if: failure()

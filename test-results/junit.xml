@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="76" failures="0" errors="0" time="0.075191748">
+    <testsuite name="src/exchange.test.js" timestamp="2026-10-06T07:06:07.622Z" hostname="runnervm8df0l" tests="4" failures="0" errors="0" skipped="0" time="0.004679987">
+        <testcase classname="src/exchange.test.js" name="convertToBase &gt; leaves base-currency amounts alone" time="0.002016685">
+        </testcase>
+        <testcase classname="src/exchange.test.js" name="convertToBase &gt; converts a foreign amount at the fixed rate" time="0.000277007">
+        </testcase>
+        <testcase classname="src/exchange.test.js" name="convertToBase &gt; rounds to a whole minor unit" time="0.000246209">
+        </testcase>
+        <testcase classname="src/exchange.test.js" name="convertToBase &gt; lists the currencies it can convert" time="0.000681091">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/history.test.js" timestamp="2026-10-06T07:06:07.624Z" hostname="runnervm8df0l" tests="9" failures="0" errors="0" skipped="0" time="0.010138999">
+        <testcase classname="src/history.test.js" name="listExpenses &gt; lists newest first with the total" time="0.004007702">
+        </testcase>
+        <testcase classname="src/history.test.js" name="listExpenses &gt; leaves out deleted expenses" time="0.000700097">
+        </testcase>
+        <testcase classname="src/history.test.js" name="listExpenses &gt; filters to a member who paid or took part" time="0.000565676">
+        </testcase>
+        <testcase classname="src/history.test.js" name="listExpenses &gt; filters by category" time="0.000404004">
+        </testcase>
+        <testcase classname="src/history.test.js" name="listExpenses &gt; filters from a moment, inclusive" time="0.000585533">
+        </testcase>
+        <testcase classname="src/history.test.js" name="listExpenses &gt; filters up to a full timestamp, inclusive" time="0.000334324">
+        </testcase>
+        <testcase classname="src/history.test.js" name="listExpenses &gt; combines filters" time="0.000330005">
+        </testcase>
+        <testcase classname="src/history.test.js" name="listExpenses &gt; clamps the page size and page number to sensible values" time="0.000484695">
+        </testcase>
+        <testcase classname="src/history.test.js" name="listExpenses &gt; falls back to a page size of 10" time="0.000499322">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/ledger.test.js" timestamp="2026-10-06T07:06:07.626Z" hostname="runnervm8df0l" tests="20" failures="0" errors="0" skipped="0" time="0.015230875">
+        <testcase classname="src/ledger.test.js" name="computeBalances &gt; credits the payer and debits each participant" time="0.002777035">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="computeBalances &gt; balances to zero on an amount that does not divide evenly" time="0.000232394">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="settleUp &gt; produces payments that clear every balance" time="0.000533245">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="addExpense amount validation &gt; [QP-QUIKSPL-28-1] Rejects negative integer input in a standard numeric field" time="0.000490536">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="addExpense amount validation &gt; [QP-QUIKSPL-28-2] Rejects negative decimal input in a standard numeric field" time="0.000260787">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="addExpense amount validation &gt; [QP-QUIKSPL-28-3] Accepts zero as valid input in a numeric field" time="0.000280513">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="addExpense amount validation &gt; [QP-QUIKSPL-28-4] Accepts positive integer input in a numeric field" time="0.00034277">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="addExpense amount validation &gt; [QP-QUIKSPL-28-5] Existing positive data remains unchanged" time="0.000195876">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="payments &gt; moves both balances towards zero" time="0.000450792">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="payments &gt; rejects a payment to oneself, a non-member, or a non-positive amount" time="0.001184251">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="deleteExpense &gt; takes the expense out of the balances" time="0.000372435">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="deleteExpense &gt; keeps the expense on record with a deletion time" time="0.000822956">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="deleteExpense &gt; refuses to delete twice or to delete what does not exist" time="0.000424523">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="updateExpense &gt; changes the description and category" time="0.000510724">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="updateExpense &gt; re-splits an equal expense when the amount changes" time="0.000425415">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="updateExpense &gt; refuses to edit a deleted expense or to set a negative amount" time="0.000421206">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="members &gt; adds a member with a fresh id" time="0.001038018">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="members &gt; will not remove a member who still owes or is owed" time="0.000741264">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="members &gt; removes a member who was never part of an expense" time="0.000271437">
+        </testcase>
+        <testcase classname="src/ledger.test.js" name="members &gt; will not remove someone who is not in the group" time="0.000490065">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/money.test.js" timestamp="2026-10-06T07:06:07.630Z" hostname="runnervm8df0l" tests="5" failures="0" errors="0" skipped="0" time="0.007494953">
+        <testcase classname="src/money.test.js" name="toMinor &gt; converts a decimal string to integer minor units" time="0.002804996">
+        </testcase>
+        <testcase classname="src/money.test.js" name="toMinor &gt; returns null for a non-numeric value" time="0.000339294">
+        </testcase>
+        <testcase classname="src/money.test.js" name="fromMinor &gt; renders minor units with two decimal places" time="0.000414323">
+        </testcase>
+        <testcase classname="src/money.test.js" name="splitEvenly &gt; splits an exactly divisible amount" time="0.001197265">
+        </testcase>
+        <testcase classname="src/money.test.js" name="splitEvenly &gt; distributes the remainder so the parts sum to the total" time="0.000329095">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/reports.test.js" timestamp="2026-10-06T07:06:07.631Z" hostname="runnervm8df0l" tests="4" failures="0" errors="0" skipped="0" time="0.00697944">
+        <testcase classname="src/reports.test.js" name="categoryTotals &gt; adds up spend per category, largest first" time="0.00308516">
+        </testcase>
+        <testcase classname="src/reports.test.js" name="categoryTotals &gt; files an expense with no category under other" time="0.000318345">
+        </testcase>
+        <testcase classname="src/reports.test.js" name="memberSummary &gt; reports what each member paid and what their share came to" time="0.001284347">
+        </testcase>
+        <testcase classname="src/reports.test.js" name="memberSummary &gt; includes the balance after payments between members" time="0.000546661">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/splits.test.js" timestamp="2026-10-06T07:06:07.634Z" hostname="runnervm8df0l" tests="10" failures="0" errors="0" skipped="0" time="0.01205702">
+        <testcase classname="src/splits.test.js" name="weighted &gt; divides in proportion to the weights" time="0.003909679">
+        </testcase>
+        <testcase classname="src/splits.test.js" name="weighted &gt; hands leftover units to the largest remainders so the parts sum to the total" time="0.000590172">
+        </testcase>
+        <testcase classname="src/splits.test.js" name="weighted &gt; returns zeros for a zero total or zero weights" time="0.000644253">
+        </testcase>
+        <testcase classname="src/splits.test.js" name="weighted &gt; returns an empty list for no weights" time="0.000300361">
+        </testcase>
+        <testcase classname="src/splits.test.js" name="computeShares &gt; splits equally by default" time="0.000601222">
+        </testcase>
+        <testcase classname="src/splits.test.js" name="computeShares &gt; gives the odd unit of an equal split to the earliest participants" time="0.000321871">
+        </testcase>
+        <testcase classname="src/splits.test.js" name="computeShares &gt; uses the stated amounts for an exact split" time="0.000507227">
+        </testcase>
+        <testcase classname="src/splits.test.js" name="computeShares &gt; applies percentages that divide the total cleanly" time="0.000388916">
+        </testcase>
+        <testcase classname="src/splits.test.js" name="computeShares &gt; divides by shares and keeps the parts summing to the total" time="0.000558172">
+        </testcase>
+        <testcase classname="src/splits.test.js" name="computeShares &gt; rejects an unknown split type" time="0.001503627">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/validation.test.js" timestamp="2026-10-06T07:06:07.636Z" hostname="runnervm8df0l" tests="24" failures="0" errors="0" skipped="0" time="0.018610474">
+        <testcase classname="src/validation.test.js" name="validateExpense participant validation &gt; [QP-QUIKSPL-31-1] Rejects expense with two identical participant IDs" time="0.003927783">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense participant validation &gt; [QP-QUIKSPL-31-2] Rejects expense with multiple identical participant IDs" time="0.000573722">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense participant validation &gt; [QP-QUIKSPL-31-3] Accepts expense with all distinct participant IDs" time="0.00093719">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense participant validation &gt; [QP-QUIKSPL-31-4] Accepts expense with a single participant" time="0.000476118">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense category &gt; defaults to other" time="0.000508079">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense category &gt; accepts a known category in any case" time="0.00028385">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense category &gt; rejects an unknown category and names the choices" time="0.000415456">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense currency &gt; keeps base-currency amounts as entered" time="0.001194349">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense currency &gt; converts an amount entered in another currency and keeps what was entered" time="0.000557952">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense currency &gt; [QP-QUIKSPL-36-1] Accepts lowercase currency code and stores it as uppercase" time="0.000605761">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense currency &gt; [QP-QUIKSPL-36-2] Accepts uppercase currency code and stores it as uppercase" time="0.000357988">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense currency &gt; [QP-QUIKSPL-36-3] Converts amount correctly for lowercase currency code" time="0.000368288">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense currency &gt; [QP-QUIKSPL-36-4] Rejects unsupported three-letter currency code during creation" time="0.000537693">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense currency &gt; [QP-QUIKSPL-36-5] Rejects unsupported lowercase three-letter currency code during creation" time="0.000635547">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense currency &gt; [QP-QUIKSPL-36-6] Allows editing an existing expense with an unsupported currency code" time="0.000470138">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense currency &gt; [QP-QUIKSPL-36-7] Validation logic is located in src/validation.js" time="0.000434541">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense split &gt; is an equal split unless told otherwise" time="0.000479305">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense split &gt; rejects an unknown split type" time="0.000351116">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense split &gt; needs details for anything but an equal split" time="0.00053609">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense split &gt; accepts exact amounts that add up to the total" time="0.000456673">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense split &gt; rejects exact amounts that do not add up to the total" time="0.000339013">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense split &gt; accepts percentages that add up to 100, including two decimals" time="0.000330847">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense split &gt; rejects percentages that do not add up to 100" time="0.000266267">
+        </testcase>
+        <testcase classname="src/validation.test.js" name="validateExpense split &gt; accepts whole-number shares and rejects anything else" time="0.000580153">
+        </testcase>
+    </testsuite>
+</testsuites>

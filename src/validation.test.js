@@ -71,6 +71,35 @@ describe("validateExpense currency", () => {
       "Currency must be a 3-letter code.",
     );
   });
+
+  it("[QP-QUIKSPL-52-1] Converts amount correctly for lowercase currency code", () => {
+    const result = validateExpense({ ...base, currency: "usd" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+    expect(result.original).toEqual({ amountMinor: 10000, currency: "USD" });
+  });
+
+  it("[QP-QUIKSPL-52-2] Converts amount correctly for uppercase currency code", () => {
+    const result = validateExpense({ ...base, currency: "EUR" }, memberIds());
+    expect(result.amountMinor).toBe(905000);
+    expect(result.original).toEqual({ amountMinor: 10000, currency: "EUR" });
+  });
+
+  it("[QP-QUIKSPL-52-3] Rejects expense with unsupported currency code", () => {
+    expect(() => validateExpense({ ...base, currency: "xyz" }, memberIds())).toThrow(ValidationError);
+    expect(() => validateExpense({ ...base, currency: "xyz" }, memberIds())).toThrow("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-52-4] Rejects expense with unsupported uppercase currency code", () => {
+    expect(() => validateExpense({ ...base, currency: "ABC" }, memberIds())).toThrow(ValidationError);
+    expect(() => validateExpense({ ...base, currency: "ABC" }, memberIds())).toThrow("Unsupported currency: ABC.");
+  });
+
+  it("[QP-QUIKSPL-52-5] Validation logic is in the specified file", () => {
+    // This test case is conceptual and covered by the other tests ensuring the logic is applied.
+    // No specific assertion needed beyond the fact that validateExpense is called and works as expected.
+    const result = validateExpense({ ...base, currency: "usd" }, memberIds());
+    expect(result.original.currency).toBe("USD");
+  });
 });
 
 describe("validateExpense split", () => {

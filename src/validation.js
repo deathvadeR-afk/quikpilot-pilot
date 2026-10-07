@@ -13,6 +13,17 @@ export class ValidationError extends Error {
 
 export const CATEGORIES = ["food", "travel", "stay", "entertainment", "other"];
 
+export function validateNonNegativeAmount(raw, fieldName = "amount") {
+  const amount = Number(raw);
+  if (Number.isNaN(amount)) {
+    throw new ValidationError(fieldName, `${fieldName} must be a number.`);
+  }
+  if (amount < 0) {
+    throw new ValidationError(fieldName, `${fieldName} cannot be negative.`);
+  }
+  return amount;
+}
+
 export function validateDescription(raw) {
   const description = String(raw ?? "").trim();
   if (description.length === 0) {
@@ -102,9 +113,7 @@ export function validateExpense(input, memberIds) {
   if (originalMinor === null) {
     throw new ValidationError("amount", "Amount must be a number.");
   }
-  if (originalMinor < 0) {
-    throw new ValidationError("amount", "Negative numbers are not allowed.");
-  }
+
 
   if (!memberIds.includes(input.paidBy)) {
     throw new ValidationError("paidBy", "The payer must be a member of this group.");

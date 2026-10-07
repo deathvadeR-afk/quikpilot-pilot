@@ -3,6 +3,8 @@
  * currency. Rates are fixed for the pilot: base-currency units per one unit of
  * the foreign currency.
  */
+import { ValidationError } from "./validation.js";
+
 export const BASE_CURRENCY = "INR";
 
 const RATES = {
@@ -17,11 +19,19 @@ export function supportedCurrencies() {
   return Object.keys(RATES);
 }
 
+export function validateCurrency(raw) {
+  const currency = String(raw ?? "").trim().toUpperCase();
+  if (!RATES[currency]) {
+    throw new ValidationError("currency", `Unsupported currency: ${currency}.`);
+  }
+  return currency;
+}
+
 export function rateFor(currency) {
   return RATES[currency] ?? 1;
 }
 
 /** Convert an integer amount in `currency` minor units into base-currency minor units. */
 export function convertToBase(amountMinor, currency = BASE_CURRENCY) {
-  return Math.round(amountMinor * rateFor(currency));
+  return Math.round(amountMinor * rateFor(validateCurrency(currency)));
 }

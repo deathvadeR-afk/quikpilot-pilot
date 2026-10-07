@@ -13,6 +13,8 @@ export class ValidationError extends Error {
 
 export const CATEGORIES = ["food", "travel", "stay", "entertainment", "other"];
 
+export const SUPPORTED_CURRENCIES = ["INR", "USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "SEK", "NZD"];
+
 export function validateDescription(raw) {
   const description = String(raw ?? "").trim();
   if (description.length === 0) {
@@ -128,10 +130,12 @@ export function validateExpense(input, memberIds) {
 
   const category = validateCategory(input.category);
 
-  const currency =
-    input.currency === undefined || input.currency === "" ? BASE_CURRENCY : String(input.currency).trim();
+  const currency = String(input.currency ?? BASE_CURRENCY).trim().toUpperCase();
   if (currency.length !== 3) {
     throw new ValidationError("currency", "Currency must be a 3-letter code.");
+  }
+  if (!SUPPORTED_CURRENCIES.includes(currency)) {
+    throw new ValidationError("currency", `Unsupported currency: ${currency}.`);
   }
   const amountMinor = convertToBase(originalMinor, currency);
 

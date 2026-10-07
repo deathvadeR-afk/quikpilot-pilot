@@ -1,5 +1,5 @@
 import { toMinor } from "./money.js";
-import { BASE_CURRENCY, convertToBase } from "./exchange.js";
+import { BASE_CURRENCY, convertToBase, supportedCurrencies } from "./exchange.js";
 import { SPLIT_TYPES, weighted } from "./splits.js";
 
 export class ValidationError extends Error {
@@ -31,6 +31,21 @@ export function validateCategory(raw) {
     throw new ValidationError("category", `Category must be one of: ${CATEGORIES.join(", ")}.`);
   }
   return category;
+}
+
+export function normalizeCurrencyCode(raw) {
+  return String(raw ?? "").trim().toUpperCase();
+}
+
+export function validateCurrencyCode(raw) {
+  const currency = normalizeCurrencyCode(raw);
+  if (currency.length !== 3) {
+    throw new ValidationError("currency", "Currency must be a 3-letter code.");
+  }
+  if (!supportedCurrencies().includes(currency)) {
+    throw new ValidationError("currency", `Unsupported currency: ${currency}.`);
+  }
+  return currency;
 }
 
 /**
@@ -128,11 +143,7 @@ export function validateExpense(input, memberIds) {
 
   const category = validateCategory(input.category);
 
-  const currency =
-    input.currency === undefined || input.currency === "" ? BASE_CURRENCY : String(input.currency).trim();
-  if (currency.length !== 3) {
-    throw new ValidationError("currency", "Currency must be a 3-letter code.");
-  }
+  const currency = validateCurrencyCode(input.currency ?? BASE_CURRENCY);
   const amountMinor = convertToBase(originalMinor, currency);
 
   const { splitType, splitDetails } = validateSplit(input, participants, originalMinor, amountMinor);

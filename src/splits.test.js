@@ -68,4 +68,40 @@ describe("computeShares", () => {
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
   });
+
+  it("uses the stated amounts for an exact split when originalAmountMinor is not provided", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants,
+      splitType: "exact",
+      splitDetails: { a: 500, b: 300, c: 200 },
+    });
+    expect(shares).toEqual([500, 300, 200]);
+  });
+
+  it("[QP-QUIKSPL-84-4] Rejects editing total amount to a negative value", () => {
+    const participants = ["a", "b"];
+    expect(() =>
+      computeShares({
+        amountMinor: -500,
+        participants,
+        splitType: "exact",
+        splitDetails: { a: 600, b: 400 },
+        originalAmountMinor: 1000,
+      })
+    ).toThrow("Total expense amount cannot be negative.");
+  });
+
+  it("[QP-QUIKSPL-84-5] Rejects editing total amount to zero when shares exist", () => {
+    const participants = ["a", "b"];
+    expect(() =>
+      computeShares({
+        amountMinor: 0,
+        participants,
+        splitType: "exact",
+        splitDetails: { a: 600, b: 400 },
+        originalAmountMinor: 1000,
+      })
+    ).toThrow("Total expense amount cannot be zero when shares exist.");
+  });
 });

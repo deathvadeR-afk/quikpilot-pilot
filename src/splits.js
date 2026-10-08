@@ -42,8 +42,45 @@ export function computeShares(expense) {
     case "equal":
       return splitEvenly(amountMinor, participants.length);
 
-    case "exact":
-      return participants.map((p) => splitDetails[p]);
+    case "exact": {
+      const originalShares = participants.map((p) => splitDetails[p]);
+      if (expense.originalAmountMinor === undefined) {
+        // This is a new expense, or an existing one not being edited for total amount
+        return originalShares;
+      }
+      // Editing an existing exact split expense with a new total amount
+      const newTotal = expense.amountMinor;
+      const oldTotal = expense.originalAmountMinor;
+
+      if (newTotal < 0) {
+        throw new Error("Total expense amount cannot be negative.");
+      }
+      if (newTotal === 0 && originalShares.length > 0) {
+        throw new Error("Total expense amount cannot be zero when shares exist.");
+      }
+
+      if (oldTotal === 0) {
+        // If the old total was zero, and new total is not zero, distribute evenly
+        return splitEvenly(newTotal, participants.length);
+      }
+
+      const ratio = newTotal / oldTotal;
+      const scaledShares = originalShares.map((share) => share * ratio);
+
+      // Distribute remainders
+      const flooredShares = scaledShares.map((s) => Math.floor(s));
+      let remainder = newTotal - flooredShares.reduce((a, b) => a + b, 0);
+
+      const fractionalParts = scaledShares.map((s, i) => ({ i, frac: s - Math.floor(s) }));
+      fractionalParts.sort((a, b) => b.frac - a.frac || a.i - b.i);
+
+      for (const { i } of fractionalParts) {
+        if (remainder === 0) break;
+        flooredShares[i] += 1;
+        remainder -= 1;
+      }
+      return flooredShares;
+    }
 
     case "percent":
       return participants.map((p) => Math.round((amountMinor * splitDetails[p]) / 100));

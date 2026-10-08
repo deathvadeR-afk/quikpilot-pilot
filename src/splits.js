@@ -42,8 +42,41 @@ export function computeShares(expense) {
     case "equal":
       return splitEvenly(amountMinor, participants.length);
 
-    case "exact":
-      return participants.map((p) => splitDetails[p]);
+    case "exact": {
+      const originalShares = participants.map((p) => splitDetails[p]);
+      const originalTotal = originalShares.reduce((sum, share) => sum + share, 0);
+
+      if (originalTotal === 0) {
+        // If original total is zero, distribute new amount evenly or based on implicit proportions if available
+        if (amountMinor === 0) {
+          return originalShares.map(() => 0);
+        } else {
+          // If original shares were all zero, distribute new amount evenly
+          // If there's an implicit proportion (e.g., from a previous state not captured here), it's not directly accessible.
+          // For now, assume equal distribution if all original shares were zero.
+          return splitEvenly(amountMinor, participants.length);
+        }
+      }
+
+      const scalingFactor = amountMinor / originalTotal;
+      let scaledShares = originalShares.map((share) => Math.floor(share * scalingFactor));
+      let remainder = amountMinor - scaledShares.reduce((sum, share) => sum + share, 0);
+
+      // Distribute remainder based on largest fractional parts, then original order
+      const fractionalParts = originalShares.map((share, i) => ({
+        i,
+        fraction: (share * scalingFactor) % 1,
+      }));
+
+      fractionalParts.sort((a, b) => b.fraction - a.fraction || a.i - b.i);
+
+      for (const { i } of fractionalParts) {
+        if (remainder === 0) break;
+        scaledShares[i] += 1;
+        remainder -= 1;
+      }
+      return scaledShares;
+    }
 
     case "percent":
       return participants.map((p) => Math.round((amountMinor * splitDetails[p]) / 100));

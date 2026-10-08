@@ -101,10 +101,10 @@ jobs:
           node-version: "20"
 
       - name: Run QuikPilot
-        run: npx --yes @quikit/quikpilot-runner@9.2.0-rc.8
+        run: npx --yes @quikit/quikpilot-runner@9.3.0-rc.1
         env:
           QUIKPILOT_TARGETING_MODE: loop
-          QUIKPILOT_CODEGEN_MODE: loop
+          QUIKPILOT_CODEGEN_MODE: loop-tests
 
       - name: Keep the files of a failed run
         if: failure()

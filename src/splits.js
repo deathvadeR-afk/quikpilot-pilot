@@ -1,4 +1,5 @@
 import { splitEvenly } from "./money.js";
+import { ValidationError } from "./validation.js";
 
 /**
  * How an expense is divided between its participants. Every function here
@@ -38,7 +39,25 @@ export function weighted(total, weights) {
 export function computeShares(expense) {
   const { amountMinor, participants, splitType = "equal", splitDetails } = expense;
 
+  if (amountMinor < 0) {
+    throw new ValidationError("amountMinor", "Total expense amount cannot be negative.");
+  }
+  if (amountMinor === 0 && participants.length > 0) {
+    throw new ValidationError("amountMinor", "Total expense amount cannot be zero when shares exist.");
+  }
+
   switch (splitType) {
+    case "exact":
+      // Recalculate individual shares proportionally when the total amount of an exact split is updated.
+      // Distribute any minor unit remainders to shares with the largest remainders, breaking ties by original order.
+      const currentShares = participants.map((p) => splitDetails[p]);
+      const currentTotal = currentShares.reduce((a, b) => a + b, 0);
+      if (currentTotal === 0) {
+        return participants.map(() => 0);
+      }
+      return weighted(amountMinor, currentShares);
+
+
     case "equal":
       return splitEvenly(amountMinor, participants.length);
 

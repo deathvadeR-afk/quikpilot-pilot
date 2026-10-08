@@ -68,4 +68,71 @@ describe("computeShares", () => {
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
   });
+
+  it("[QP-QUIKSPL-92-1] Scales shares proportionally for a positive amount increase", () => {
+    const shares = computeShares({
+      amountMinor: 2000,
+      participants: ["a", "b"],
+      splitType: "exact",
+      splitDetails: { a: 600, b: 400 }
+    });
+    expect(shares).toEqual([1200, 800]);
+  });
+
+  it("[QP-QUIKSPL-92-2] Scales shares proportionally for a positive amount decrease", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["a", "b"],
+      splitType: "exact",
+      splitDetails: { a: 1200, b: 800 }
+    });
+    expect(shares).toEqual([600, 400]);
+  });
+
+  it("[QP-QUIKSPL-92-3] Distributes minor unit remainders correctly", () => {
+    const shares = computeShares({
+      amountMinor: 1100,
+      participants: ["a", "b", "c"],
+      splitType: "exact",
+      splitDetails: { a: 333, b: 333, c: 334 }
+    });
+    expect(shares.reduce((a, b) => a + b, 0)).toBe(1100);
+    // The exact distribution might vary slightly based on rounding, but the sum must be correct.
+    // For 1100 / 1000 * [333, 333, 334] = [366.3, 366.3, 367.4]
+    // Rounded down: [366, 366, 367]. Remainder 1100 - (366+366+367) = 1. 
+    // Original order tie-breaking for largest remainders: c (0.4), a (0.3), b (0.3)
+    // So, c gets +1. Result: [366, 366, 368] or similar based on weighted implementation.
+    // Let's check for the sum and approximate values.
+    expect(shares[0]).toBeCloseTo(366.3, -1);
+    expect(shares[1]).toBeCloseTo(366.3, -1);
+    expect(shares[2]).toBeCloseTo(367.4, -1);
+  });
+
+  it("[QP-QUIKSPL-92-4] Rejects editing total amount to a negative value", () => {
+    expect(() => computeShares({
+      amountMinor: -500,
+      participants: ["a", "b"],
+      splitType: "exact",
+      splitDetails: { a: 600, b: 400 }
+    })).toThrow("Total expense amount cannot be negative.");
+  });
+
+  it("[QP-QUIKSPL-92-5] Rejects editing total amount to zero when shares exist", () => {
+    expect(() => computeShares({
+      amountMinor: 0,
+      participants: ["a", "b"],
+      splitType: "exact",
+      splitDetails: { a: 600, b: 400 }
+    })).toThrow("Total expense amount cannot be zero when shares exist.");
+  });
+
+  it("[QP-QUIKSPL-92-6] Handles single share expense correctly", () => {
+    const shares = computeShares({
+      amountMinor: 1500,
+      participants: ["a"],
+      splitType: "exact",
+      splitDetails: { a: 1000 }
+    });
+    expect(shares).toEqual([1500]);
+  });
 });

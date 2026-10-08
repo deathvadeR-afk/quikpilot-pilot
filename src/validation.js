@@ -1,5 +1,5 @@
 import { toMinor } from "./money.js";
-import { BASE_CURRENCY, convertToBase } from "./exchange.js";
+import { BASE_CURRENCY, convertToBase, supportedCurrencies } from "./exchange.js";
 import { SPLIT_TYPES, weighted } from "./splits.js";
 
 export class ValidationError extends Error {
@@ -128,10 +128,14 @@ export function validateExpense(input, memberIds) {
 
   const category = validateCategory(input.category);
 
-  const currency =
-    input.currency === undefined || input.currency === "" ? BASE_CURRENCY : String(input.currency).trim();
+  const currency = (
+    input.currency === undefined || input.currency === "" ? BASE_CURRENCY : String(input.currency).trim()
+  ).toUpperCase();
   if (currency.length !== 3) {
     throw new ValidationError("currency", "Currency must be a 3-letter code.");
+  }
+  if (!supportedCurrencies().includes(currency)) {
+    throw new ValidationError("currency", `Unsupported currency: ${currency}.`);
   }
   const amountMinor = convertToBase(originalMinor, currency);
 
@@ -145,6 +149,6 @@ export function validateExpense(input, memberIds) {
     category,
     splitType,
     splitDetails,
-    original: { amountMinor: originalMinor, currency },
+    original: { amountMinor: originalMinor, currency: String(input.currency ?? BASE_CURRENCY).trim().toUpperCase() },
   };
 }

@@ -133,3 +133,29 @@ describe("validateExpense split", () => {
     ).toThrow("Shares must be whole numbers greater than zero.");
   });
 });
+
+describe("validateExpense currency conversion and validation", () => {
+  const base = { description: "Test", amount: "100.00", paidBy: "u1", participants: ["u1", "u2"] };
+
+  it("[QP-QUIKSPL-56-1] Converts 'usd' to USD correctly", () => {
+    const result = validateExpense({ ...base, currency: "usd" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+    expect(result.original).toEqual({ amountMinor: 10000, currency: "USD" });
+  });
+
+  it("[QP-QUIKSPL-56-2] Converts 'USD' to USD correctly", () => {
+    const result = validateExpense({ ...base, currency: "USD" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+    expect(result.original).toEqual({ amountMinor: 10000, currency: "USD" });
+  });
+
+  it("[QP-QUIKSPL-56-3] Rejects unsupported currency 'XYZ' with correct error message", () => {
+    expect(() => validateExpense({ ...base, currency: "XYZ" }, memberIds())).toThrow(ValidationError);
+    expect(() => validateExpense({ ...base, currency: "XYZ" }, memberIds())).toThrow("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-56-4] Rejects unsupported currency 'xyz' with correct error message (uppercase code)", () => {
+    expect(() => validateExpense({ ...base, currency: "xyz" }, memberIds())).toThrow(ValidationError);
+    expect(() => validateExpense({ ...base, currency: "xyz" }, memberIds())).toThrow("Unsupported currency: XYZ.");
+  });
+});

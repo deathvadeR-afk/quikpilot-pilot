@@ -8,9 +8,11 @@ import { computeShares } from "./splits.js";
  */
 
 /** Total spend per category, largest first. */
+import { isActive } from "./ledger.js";
+
 export function categoryTotals(group) {
   const totals = {};
-  for (const exp of group.expenses) {
+  for (const exp of group.expenses.filter(isActive)) {
     const category = exp.category ?? "other";
     totals[category] = (totals[category] ?? 0) + exp.amountMinor;
   }
@@ -29,7 +31,7 @@ export function memberSummary(group) {
     group.members.map((m) => [m.id, { id: m.id, name: m.name, paidMinor: 0, owedMinor: 0, balanceMinor: balances[m.id] }]),
   );
 
-  for (const exp of group.expenses) {
+  for (const exp of group.expenses.filter(isActive)) {
     const shares = computeShares(exp);
     summary[exp.paidBy].paidMinor += exp.amountMinor;
     exp.participants.forEach((memberId, i) => {

@@ -101,7 +101,7 @@ jobs:
           node-version: "20"
 
       - name: Run QuikPilot
-        run: npx --yes @quikit/quikpilot-runner@9.3.0-rc.7
+        run: npx --yes @quikit/quikpilot-runner@9.3.0-rc.8
         env:
           QUIKPILOT_TARGETING_MODE: loop
           QUIKPILOT_CODEGEN_MODE: loop-tests

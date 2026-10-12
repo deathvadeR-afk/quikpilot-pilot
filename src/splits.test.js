@@ -68,4 +68,37 @@ describe("computeShares", () => {
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
   });
+
+  it("[QP-QUIKSPL-133-1] Scales shares proportionally for a simple increase", () => {
+    const shares = computeShares({
+      amountMinor: 2000,
+      participants: ["a", "b"],
+      splitType: "exact",
+      splitDetails: { a: 600, b: 400 },
+      oldAmountMinor: 1000
+    });
+    expect(shares).toEqual([1200, 800]);
+  });
+
+  it("[QP-QUIKSPL-133-2] Scales shares proportionally for a simple decrease", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["a", "b"],
+      splitType: "exact",
+      splitDetails: { a: 1200, b: 800 },
+      oldAmountMinor: 2000
+    });
+    expect(shares).toEqual([600, 400]);
+  });
+
+  it("[QP-QUIKSPL-133-3] Distributes remainder to largest shares, earliest first", () => {
+    const shares = computeShares({
+      amountMinor: 1001,
+      participants: ["a", "b", "c"],
+      splitType: "exact",
+      splitDetails: { a: 333, b: 333, c: 334 },
+      oldAmountMinor: 1000
+    });
+    expect(shares).toEqual([333, 333, 335]);
+  });
 });

@@ -42,8 +42,41 @@ export function computeShares(expense) {
     case "equal":
       return splitEvenly(amountMinor, participants.length);
 
-    case "exact":
-      return participants.map((p) => splitDetails[p]);
+    case "exact": {
+      const oldTotal = participants.reduce((sum, p) => sum + (splitDetails[p] || 0), 0);
+      if (oldTotal === amountMinor) {
+        return participants.map((p) => splitDetails[p]);
+      }
+      if (oldTotal === 0) {
+        // If old total was zero, and new total is not, distribute evenly
+        return splitEvenly(amountMinor, participants.length);
+      }
+      const scaleFactor = amountMinor / oldTotal;
+      const scaledShares = participants.map((p) => Math.floor((splitDetails[p] || 0) * scaleFactor));
+      const currentSum = scaledShares.reduce((a, b) => a + b, 0);
+      let remainder = amountMinor - currentSum;
+
+      // Distribute remainder to largest shares, earliest first
+      const sharesWithOriginalValues = participants.map((p, i) => ({
+        index: i,
+        scaledValue: scaledShares[i],
+        originalValue: splitDetails[p] || 0,
+      }));
+
+      sharesWithOriginalValues.sort((a, b) => {
+        if (b.originalValue !== a.originalValue) {
+          return b.originalValue - a.originalValue;
+        }
+        return a.index - b.index;
+      });
+
+      for (const { index } of sharesWithOriginalValues) {
+        if (remainder === 0) break;
+        scaledShares[index] += 1;
+        remainder -= 1;
+      }
+      return scaledShares;
+    }
 
     case "percent":
       return participants.map((p) => Math.round((amountMinor * splitDetails[p]) / 100));

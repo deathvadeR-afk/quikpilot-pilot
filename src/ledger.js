@@ -1,4 +1,5 @@
 import { computeShares } from "./splits.js";
+import { listExpenses } from "./history.js";
 import { ValidationError, validateCategory, validateDescription } from "./validation.js";
 
 /**
@@ -108,6 +109,10 @@ export function removeMember(group, memberId) {
     throw new ValidationError("memberId", "That member is not in this group.");
   }
   const balances = computeBalances(group);
+  const activeExpenses = listExpenses(group, { memberId, page: 1, pageSize: 1 }).items;
+  if (activeExpenses.length > 0) {
+    throw new ValidationError("memberId", "That member appears in expenses and cannot be removed.");
+  }
   if (balances[memberId] !== 0) {
     throw new ValidationError("memberId", "Settle this member's balance before removing them.");
   }

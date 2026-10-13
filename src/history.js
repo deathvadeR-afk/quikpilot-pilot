@@ -28,8 +28,9 @@ export function listExpenses(group, options = {}) {
 
   const start = (page - 1) * pageSize;
   const end = start + pageSize;
+  const paginatedItems = items.slice(start, end);
   return {
-    items: items.slice(start, end + 1),
+    items: paginatedItems,
     page,
     pageSize,
     total: items.length,

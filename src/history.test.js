@@ -64,4 +64,70 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-166-1] Displays correct number of items on first page when total is not a multiple of page size", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    expect(new Set(result.items.map(e => e.id)).size).toBe(10);
+    expect(result.total).toBe(12);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(true);
+  });
+
+  it("[QP-QUIKSPL-166-2] Displays correct number of items on subsequent pages without duplication when total is not a multiple of page size", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const firstPage = listExpenses(g, { pageSize: 10, page: 1 });
+    const secondPage = listExpenses(g, { pageSize: 10, page: 2 });
+    expect(secondPage.items.length).toBe(2);
+    expect(new Set(secondPage.items.map(e => e.id)).size).toBe(2);
+    const firstPageIds = new Set(firstPage.items.map(e => e.id));
+    const intersection = secondPage.items.filter(e => firstPageIds.has(e.id));
+    expect(intersection.length).toBe(0);
+    expect(secondPage.total).toBe(12);
+    expect(secondPage.page).toBe(2);
+    expect(secondPage.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-166-3] Displays all items correctly when total is less than page size", () => {
+    const g = group(); // 3 items
+    const result = listExpenses(g, { pageSize: 10 });
+    expect(result.items.length).toBe(3);
+    expect(new Set(result.items.map(e => e.id)).size).toBe(3);
+    expect(result.total).toBe(3);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-166-4] Displays all items correctly on the first page when total is an exact multiple of page size", () => {
+    const g = group();
+    for (let i = 0; i < 7; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    expect(new Set(result.items.map(e => e.id)).size).toBe(10);
+    expect(result.total).toBe(10);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-166-5] Displays all items correctly on the last page when total is an exact multiple of page size", () => {
+    const g = group();
+    for (let i = 0; i < 7; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const firstPage = listExpenses(g, { pageSize: 10, page: 1 });
+    const secondPage = listExpenses(g, { pageSize: 10, page: 2 });
+    expect(secondPage.items.length).toBe(0);
+    expect(secondPage.total).toBe(10);
+    expect(secondPage.page).toBe(2);
+    expect(secondPage.hasMore).toBe(false);
+  });
 });

@@ -64,4 +64,74 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-172-1] Displays correct number of items on the first page when total items exceed page size", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    // Total 3 (initial) + 9 (extra) = 12 items
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    expect(new Set(result.items.map(e => e.id)).size).toBe(10);
+    expect(result.total).toBe(12);
+    expect(result.hasMore).toBe(true);
+  });
+
+  it("[QP-QUIKSPL-172-2] Displays correct number of items on the second page with remaining items", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    // Total 3 (initial) + 9 (extra) = 12 items
+    const firstPage = listExpenses(g, { page: 1, pageSize: 10 });
+    const secondPage = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(secondPage.items.length).toBe(2);
+    expect(new Set(secondPage.items.map(e => e.id)).size).toBe(2);
+    const firstPageIds = new Set(firstPage.items.map(e => e.id));
+    const secondPageIds = new Set(secondPage.items.map(e => e.id));
+    secondPageIds.forEach(id => expect(firstPageIds.has(id)).toBe(false));
+    expect(secondPage.total).toBe(12);
+    expect(secondPage.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-172-3] Displays all items on a single page when total items are less than page size", () => {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Item 1", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-01T09:00:00.000Z" });
+    addExpense(g, { description: "Item 2", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-02T09:00:00.000Z" });
+    addExpense(g, { description: "Item 3", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-03T09:00:00.000Z" });
+    addExpense(g, { description: "Item 4", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-04T09:00:00.000Z" });
+    addExpense(g, { description: "Item 5", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-05T09:00:00.000Z" });
+    // Total 5 items
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(5);
+    expect(new Set(result.items.map(e => e.id)).size).toBe(5);
+    expect(result.total).toBe(5);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-172-4] Handles exact multiple of page size without duplication", () => {
+    const g = group();
+    for (let i = 0; i < 17; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    // Total 3 (initial) + 17 (extra) = 20 items
+    const firstPage = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(firstPage.items.length).toBe(10);
+    expect(new Set(firstPage.items.map(e => e.id)).size).toBe(10);
+    expect(firstPage.total).toBe(20);
+    expect(firstPage.hasMore).toBe(true);
+
+    const secondPage = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(secondPage.items.length).toBe(10);
+    expect(new Set(secondPage.items.map(e => e.id)).size).toBe(10);
+    const firstPageIds = new Set(firstPage.items.map(e => e.id));
+    const secondPageIds = new Set(secondPage.items.map(e => e.id));
+    secondPageIds.forEach(id => expect(firstPageIds.has(id)).toBe(false));
+    expect(secondPage.total).toBe(20);
+    expect(secondPage.hasMore).toBe(false);
+  });
 });

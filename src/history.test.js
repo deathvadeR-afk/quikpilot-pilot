@@ -64,4 +64,58 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-146-1] Displays correct number of items on first page when total items exceed page size", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Item ${i + 4}`, amountMinor: 100, paidBy: "u1", participants: ["u1"] });
+    }
+    // Total 12 items now (3 initial + 9 added)
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    expect(result.items.map((e) => e.description)).toEqual([
+      "Item 4", "Item 5", "Item 6", "Item 7", "Item 8", "Item 9", "Item 10", "Item 11", "Item 12", "Third"
+    ]);
+    expect(result.page).toBe(1);
+    expect(result.pageSize).toBe(10);
+    expect(result.total).toBe(12);
+    expect(result.hasMore).toBe(true);
+  });
+
+  it("[QP-QUIKSPL-146-2] Displays remaining items on subsequent pages without repetition", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Item ${i + 4}`, amountMinor: 100, paidBy: "u1", participants: ["u1"] });
+    }
+    // Total 12 items now (3 initial + 9 added)
+    const resultPage2 = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(resultPage2.items.length).toBe(2);
+    expect(resultPage2.items.map((e) => e.description)).toEqual(["Second", "First"]);
+    expect(resultPage2.page).toBe(2);
+    expect(resultPage2.pageSize).toBe(10);
+    expect(resultPage2.total).toBe(12);
+    expect(resultPage2.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-146-3] Displays all items on a single page when total items are less than or equal to page size", () => {
+    const g = group(); // 3 items
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(3);
+    expect(result.items.map((e) => e.description)).toEqual(["Third", "Second", "First"]);
+    expect(result.page).toBe(1);
+    expect(result.pageSize).toBe(10);
+    expect(result.total).toBe(3);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-146-4] Handles empty expense list correctly", () => {
+    const g = createGroup("empty", "Empty Group", []);
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(0);
+    expect(result.items).toEqual([]);
+    expect(result.page).toBe(1);
+    expect(result.pageSize).toBe(10);
+    expect(result.total).toBe(0);
+    expect(result.hasMore).toBe(false);
+  });
 });

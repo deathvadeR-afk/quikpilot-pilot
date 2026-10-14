@@ -43,6 +43,13 @@ export function computeShares(expense) {
       return splitEvenly(amountMinor, participants.length);
 
     case "exact":
+      // If an original amount is provided, scale the existing shares proportionally.
+      // Otherwise, use the provided splitDetails as is.
+      if (expense.originalAmountMinor !== undefined && expense.originalAmountMinor !== expense.amountMinor) {
+        const scaleFactor = expense.amountMinor / expense.originalAmountMinor;
+        const scaledShares = participants.map((p) => splitDetails[p] * scaleFactor);
+        return weighted(expense.amountMinor, scaledShares);
+      }
       return participants.map((p) => splitDetails[p]);
 
     case "percent":

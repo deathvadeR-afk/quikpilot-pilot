@@ -64,4 +64,49 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-175-1] Page 1 displays correct number of unique expenses when total items exceed page size", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    const uniqueDescriptions = new Set(result.items.map(e => e.description));
+    expect(uniqueDescriptions.size).toBe(10);
+  });
+
+  it("[QP-QUIKSPL-175-2] Page 2 displays remaining unique expenses when total items exceed page size", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const resultPage1 = listExpenses(g, { page: 1, pageSize: 10 });
+    const resultPage2 = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(resultPage2.items.length).toBe(2);
+    const page1Descriptions = new Set(resultPage1.items.map(e => e.description));
+    const page2Descriptions = new Set(resultPage2.items.map(e => e.description));
+    page2Descriptions.forEach(desc => expect(page1Descriptions.has(desc)).toBe(false));
+  });
+
+  it("[QP-QUIKSPL-175-3] No duplication when total items are less than or equal to page size", () => {
+    const g = group(); // 3 items
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(3);
+    const uniqueDescriptions = new Set(result.items.map(e => e.description));
+    expect(uniqueDescriptions.size).toBe(3);
+    expect(listExpenses(g, { page: 2, pageSize: 10 }).items.length).toBe(0);
+  });
+
+  it("[QP-QUIKSPL-175-4] No duplication when total items are exactly page size", () => {
+    const g = group();
+    for (let i = 0; i < 7; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    const uniqueDescriptions = new Set(result.items.map(e => e.description));
+    expect(uniqueDescriptions.size).toBe(10);
+    expect(listExpenses(g, { page: 2, pageSize: 10 }).items.length).toBe(0);
+  });
 });

@@ -26,13 +26,13 @@ export function listExpenses(group, options = {}) {
 
   items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
 
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
   return {
-    items: items.slice(start, end + 1),
+    items: items.slice(startIndex, endIndex),
     page,
     pageSize,
     total: items.length,
-    hasMore: end < items.length,
+    hasMore: endIndex < items.length,
   };
 }

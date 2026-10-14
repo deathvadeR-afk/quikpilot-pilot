@@ -1,5 +1,6 @@
 import { isActive } from "./ledger.js";
 
+
 /**
  * The expense history: newest first, filterable, paged.
  *
@@ -22,7 +23,16 @@ export function listExpenses(group, options = {}) {
   if (memberId) items = items.filter((e) => e.paidBy === memberId || e.participants.includes(memberId));
   if (category) items = items.filter((e) => e.category === category);
   if (from) items = items.filter((e) => e.createdAt >= from);
-  if (to) items = items.filter((e) => e.createdAt <= to);
+  if (to) {
+    if (to.length === 10) {
+      // If 'to' is a plain date (YYYY-MM-DD), adjust to end of day
+      const endOfDay = new Date(`${to}T23:59:59.999Z`).toISOString();
+      items = items.filter((e) => e.createdAt <= endOfDay);
+    } else {
+      // Otherwise, use the provided timestamp directly
+      items = items.filter((e) => e.createdAt <= to);
+    }
+  }
 
   items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
 

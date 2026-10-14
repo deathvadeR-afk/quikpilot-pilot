@@ -64,4 +64,31 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-204-1] Includes expenses on the end date when a plain date is used", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    addExpense(g, { description: "Morning", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-02T10:00:00.000Z" });
+    addExpense(g, { description: "Afternoon", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-02T14:30:00.000Z" });
+    const result = listExpenses(g, { from: "2026-10-02", to: "2026-10-02" });
+    expect(result.items.map((e) => e.description)).toEqual(["Afternoon", "Morning"]);
+    expect(result.total).toBe(2);
+  });
+
+  it("[QP-QUIKSPL-204-2] Excludes expenses after the end date when a plain date is used", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    addExpense(g, { description: "Day 2", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-02T10:00:00.000Z" });
+    addExpense(g, { description: "Day 3", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-03T10:00:00.000Z" });
+    const result = listExpenses(g, { from: "2026-10-02", to: "2026-10-02" });
+    expect(result.items.map((e) => e.description)).toEqual(["Day 2"]);
+    expect(result.total).toBe(1);
+  });
+
+  it("[QP-QUIKSPL-204-3] Maintains existing behavior for full timestamp 'to' filter", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    addExpense(g, { description: "Morning", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-02T10:00:00.000Z" });
+    addExpense(g, { description: "Afternoon", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-02T14:30:00.000Z" });
+    const result = listExpenses(g, { from: "2026-10-02T00:00:00Z", to: "2026-10-02T12:00:00Z" });
+    expect(result.items.map((e) => e.description)).toEqual(["Morning"]);
+    expect(result.total).toBe(1);
+  });
 });

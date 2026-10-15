@@ -64,4 +64,38 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-228-1] Includes expenses from the entire end date when a plain date is used", () => {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" }
+    ]);
+    const add = (description, createdAt) =>
+      addExpense(g, { description, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt });
+    add("Expense 1", "2026-10-02T10:00:00.000Z");
+    add("Expense 2", "2026-10-02T14:00:00.000Z");
+    const result = listExpenses(g, { from: "2026-10-02", to: "2026-10-02" });
+    expect(result.items.map((e) => e.description)).toEqual(["Expense 2", "Expense 1"]);
+  });
+
+  it("[QP-QUIKSPL-228-2] Excludes expenses beyond the specified timestamp when a full timestamp is used", () => {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" }
+    ]);
+    const add = (description, createdAt) =>
+      addExpense(g, { description, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt });
+    add("Expense 1", "2026-10-02T14:00:00.000Z");
+    const result = listExpenses(g, { from: "2026-10-02T00:00:00.000Z", to: "2026-10-02T12:00:00.000Z" });
+    expect(result.items.map((e) => e.description)).toEqual([]);
+  });
+
+  it("[QP-QUIKSPL-228-3] Includes expenses up to the specified timestamp when a full timestamp is used", () => {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" }
+    ]);
+    const add = (description, createdAt) =>
+      addExpense(g, { description, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt });
+    add("Expense 1", "2026-10-02T10:00:00.000Z");
+    const result = listExpenses(g, { from: "2026-10-02T00:00:00.000Z", to: "2026-10-02T12:00:00.000Z" });
+    expect(result.items.map((e) => e.description)).toEqual(["Expense 1"]);
+  });
 });

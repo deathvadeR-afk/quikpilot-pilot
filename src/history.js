@@ -13,6 +13,10 @@ import { isActive } from "./ledger.js";
  */
 export const MAX_PAGE_SIZE = 50;
 
+function isPlainDate(dateString) {
+  return /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(dateString) && dateString.length === 10;
+}
+
 export function listExpenses(group, options = {}) {
   const { memberId, category, from, to } = options;
   const page = Math.max(1, Math.floor(Number(options.page) || 1));
@@ -22,7 +26,10 @@ export function listExpenses(group, options = {}) {
   if (memberId) items = items.filter((e) => e.paidBy === memberId || e.participants.includes(memberId));
   if (category) items = items.filter((e) => e.category === category);
   if (from) items = items.filter((e) => e.createdAt >= from);
-  if (to) items = items.filter((e) => e.createdAt <= to);
+  if (to) {
+    const adjustedTo = isPlainDate(to) ? `${to}T23:59:59.999Z` : to;
+    items = items.filter((e) => e.createdAt <= adjustedTo);
+  }
 
   items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
 

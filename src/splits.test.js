@@ -68,4 +68,64 @@ describe("computeShares", () => {
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
   });
+
+  it("[QP-QUIKSPL-226-1] Scales shares proportionally for an exact split when amount doubles", () => {
+    const shares = computeShares({
+      amountMinor: 2000,
+      participants: ["u1", "u2"],
+      splitType: "exact",
+      splitDetails: { u1: 1200, u2: 800 },
+      originalAmountMinor: 1000
+    });
+    expect(shares).toEqual([1200, 800]);
+    expect(sum(shares)).toBe(2000);
+  });
+
+  it("[QP-QUIKSPL-226-2] Scales shares proportionally for an exact split when amount halves", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["u1", "u2"],
+      splitType: "exact",
+      splitDetails: { u1: 600, u2: 400 },
+      originalAmountMinor: 2000
+    });
+    expect(shares).toEqual([600, 400]);
+    expect(sum(shares)).toBe(1000);
+  });
+
+  it("[QP-QUIKSPL-226-3] Distributes minor unit remainder to largest remainder, earliest first", () => {
+    const shares = computeShares({
+      amountMinor: 1001,
+      participants: ["u1", "u2", "u3"],
+      splitType: "exact",
+      splitDetails: { u1: 333, u2: 333, u3: 334 },
+      originalAmountMinor: 1000
+    });
+    expect(shares).toEqual([333, 333, 334]);
+    expect(sum(shares)).toBe(1000);
+  });
+
+  it("[QP-QUIKSPL-226-4] Does not scale shares for a non-exact split type when amount changes", () => {
+    const shares = computeShares({
+      amountMinor: 2000,
+      participants: ["u1", "u2"],
+      splitType: "percent",
+      splitDetails: { u1: 60, u2: 40 },
+      originalAmountMinor: 1000
+    });
+    expect(shares).toEqual([1200, 800]);
+    expect(sum(shares)).toBe(2000);
+  });
+
+  it("[QP-QUIKSPL-226-5] Handles zero original amount gracefully", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["u1", "u2"],
+      splitType: "exact",
+      splitDetails: { u1: 0, u2: 0 },
+      originalAmountMinor: 0
+    });
+    expect(shares).toEqual([0, 0]);
+    expect(sum(shares)).toBe(0);
+  });
 });

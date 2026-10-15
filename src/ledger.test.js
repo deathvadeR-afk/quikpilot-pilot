@@ -194,4 +194,27 @@ describe("members", () => {
   it("will not remove someone who is not in the group", () => {
     expect(() => removeMember(group(), "zz")).toThrow("not in this group");
   });
+
+  it("[QP-QUIKSPL-247-1] rejects removal of zero-balance member associated with an expense", () => {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 300, paidBy: "u1", participants: ["u1"] });
+    expect(computeBalances(g).u1).toBe(0);
+    expect(() => removeMember(g, "u1")).toThrow(ValidationError);
+    try {
+      removeMember(g, "u1");
+    } catch (err) {
+      expect(err).toBeInstanceOf(ValidationError);
+      expect(err.field).toBe("memberId");
+      expect(err.message).toBe("That member appears in expenses and cannot be removed.");
+    }
+  });
+
+  it("[QP-QUIKSPL-247-2] permits removal of member with zero balance and no expense records", () => {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 600, paidBy: "u1", participants: ["u1", "u2"] });
+    expect(computeBalances(g).u3).toBe(0);
+    removeMember(g, "u3");
+    expect(g.members.some((m) => m.id === "u3")).toBe(false);
+    expect(() => assertBalanced(computeBalances(g))).not.toThrow();
+  });
 });

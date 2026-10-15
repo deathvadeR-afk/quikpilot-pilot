@@ -111,6 +111,12 @@ export function removeMember(group, memberId) {
   if (balances[memberId] !== 0) {
     throw new ValidationError("memberId", "Settle this member's balance before removing them.");
   }
+  const appearsInExpenses = group.expenses
+    .filter(isActive)
+    .some((exp) => exp.paidBy === memberId || exp.participants.includes(memberId));
+  if (appearsInExpenses) {
+    throw new ValidationError("memberId", "That member appears in expenses and cannot be removed.");
+  }
   group.members = group.members.filter((m) => m.id !== memberId);
 }
 

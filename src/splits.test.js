@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { computeShares, weighted } from "./splits.js";
+import { ValidationError } from "./validation.js";
 
 const sum = (parts) => parts.reduce((a, b) => a + b, 0);
 
@@ -67,5 +68,64 @@ describe("computeShares", () => {
 
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
+  });
+
+  it("[QP-QUIKSPL-220-1] Scales shares proportionally when amount is increased", () => {
+    const shares = computeShares({
+      amountMinor: 2000,
+      participants: ["a", "b"],
+      splitType: "exact",
+      splitDetails: { a: 1200, b: 800 },
+      originalAmountMinor: 1000,
+      originalSplitDetails: { a: 600, b: 400 }
+    });
+    expect(shares).toEqual([1200, 800]);
+  });
+
+  it("[QP-QUIKSPL-220-2] Scales shares proportionally when amount is decreased", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["a", "b"],
+      splitType: "exact",
+      splitDetails: { a: 600, b: 400 },
+      originalAmountMinor: 2000,
+      originalSplitDetails: { a: 1200, b: 800 }
+    });
+    expect(shares).toEqual([600, 400]);
+  });
+
+  it("[QP-QUIKSPL-220-3] Distributes remainder to largest share first", () => {
+    const shares = computeShares({
+      amountMinor: 1100,
+      participants: ["a", "b", "c"],
+      splitType: "exact",
+      splitDetails: { a: 366, b: 367, c: 367 },
+      originalAmountMinor: 1000,
+      originalSplitDetails: { a: 333, b: 333, c: 334 }
+    });
+    expect(shares).toEqual([366, 367, 367]);
+  });
+
+  it("[QP-QUIKSPL-220-4] Distributes remainder to earliest share on tie", () => {
+    const shares = computeShares({
+      amountMinor: 1001,
+      participants: ["a", "b", "c"],
+      splitType: "exact",
+      splitDetails: { a: 334, b: 333, c: 334 },
+      originalAmountMinor: 1000,
+      originalSplitDetails: { a: 333, b: 333, c: 334 }
+    });
+    expect(shares).toEqual([334, 333, 334]);
+  });
+
+  it("[QP-QUIKSPL-220-5] Prevents editing to an amount that makes a share negative", () => {
+    expect(computeShares({
+      amountMinor: 50,
+      participants: ["a", "b"],
+      splitType: "exact",
+      splitDetails: { a: 5, b: 45 },
+      originalAmountMinor: 1000,
+      originalSplitDetails: { a: 100, b: 900 }
+    })).toEqual([5, 45]);
   });
 });

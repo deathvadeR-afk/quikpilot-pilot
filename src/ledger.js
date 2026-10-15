@@ -1,4 +1,4 @@
-import { computeShares } from "./splits.js";
+import { computeShares, scaleExactShares } from "./splits.js";
 import { ValidationError, validateCategory, validateDescription } from "./validation.js";
 
 /**

@@ -1,4 +1,5 @@
 import { toMinor } from "./money.js";
+import { supportedCurrencies } from "./exchange.js";
 import { BASE_CURRENCY, convertToBase } from "./exchange.js";
 import { SPLIT_TYPES, weighted } from "./splits.js";
 
@@ -128,11 +129,16 @@ export function validateExpense(input, memberIds) {
 
   const category = validateCategory(input.category);
 
-  const currency =
+  let currency =
     input.currency === undefined || input.currency === "" ? BASE_CURRENCY : String(input.currency).trim();
-  if (currency.length !== 3) {
+  const upperCaseCurrency = currency.toUpperCase();
+  if (upperCaseCurrency.length !== 3) {
     throw new ValidationError("currency", "Currency must be a 3-letter code.");
   }
+  if (!supportedCurrencies().includes(upperCaseCurrency)) {
+    throw new ValidationError("currency", `Unsupported currency: ${upperCaseCurrency}.`);
+  }
+  currency = upperCaseCurrency;
   const amountMinor = convertToBase(originalMinor, currency);
 
   const { splitType, splitDetails } = validateSplit(input, participants, originalMinor, amountMinor);

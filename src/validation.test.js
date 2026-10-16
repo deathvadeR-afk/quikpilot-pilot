@@ -71,6 +71,29 @@ describe("validateExpense currency", () => {
       "Currency must be a 3-letter code.",
     );
   });
+
+  it("[QP-QUIKSPL-251-1] converts lowercase currency code to base equivalent using uppercase exchange rate", () => {
+    const result = validateExpense({ ...base, amount: "100.00", currency: "usd" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+    expect(result.original.currency).toBe("USD");
+  });
+
+  it("[QP-QUIKSPL-251-2] accepts mixed-case currency code and converts to base equivalent", () => {
+    const result = validateExpense({ ...base, amount: "100.00", currency: "uSd" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+  });
+
+  it("[QP-QUIKSPL-251-3] throws ValidationError on currency field for unsupported three-letter currency code", () => {
+    let err;
+    try {
+      validateExpense({ ...base, currency: "xyz" }, memberIds());
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeInstanceOf(ValidationError);
+    expect(err.field).toBe("currency");
+    expect(err.message).toBe("Unsupported currency: XYZ.");
+  });
 });
 
 describe("validateExpense split", () => {

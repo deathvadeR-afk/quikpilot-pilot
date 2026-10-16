@@ -20,4 +20,12 @@ describe("convertToBase", () => {
   it("lists the currencies it can convert", () => {
     expect(supportedCurrencies()).toEqual(["INR", "USD", "EUR", "GBP", "AED"]);
   });
+
+  it("[QP-QUIKSPL-255-1] converts expense amount when lowercase currency code is supplied", () => {
+    expect(convertToBase(10000, "usd")).toBe(832000);
+  });
+
+  it("[QP-QUIKSPL-255-2] converts expense amount when mixed case currency code is supplied", () => {
+    expect(convertToBase(10000, "Usd")).toBe(832000);
+  });
 });

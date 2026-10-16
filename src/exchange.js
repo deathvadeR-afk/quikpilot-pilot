@@ -18,7 +18,8 @@ export function supportedCurrencies() {
 }
 
 export function rateFor(currency) {
-  return RATES[currency] ?? 1;
+  const code = typeof currency === "string" ? currency.toUpperCase() : currency;
+  return RATES[code] ?? 1;
 }
 
 /** Convert an integer amount in `currency` minor units into base-currency minor units. */

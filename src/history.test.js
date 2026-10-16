@@ -64,4 +64,38 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-257-1] limits returned expenses to requested page size on first page", () => {
+    const g = createGroup("g_page", "Page Test", [{ id: "u1", name: "A" }]);
+    for (let i = 1; i <= 12; i++) {
+      const day = String(i).padStart(2, "0");
+      addExpense(g, { description: `Exp ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-${day}T09:00:00.000Z` });
+    }
+    const res = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(res.items).toHaveLength(10);
+  });
+
+  it("[QP-QUIKSPL-257-2] prevents boundary items from appearing across adjacent pages", () => {
+    const g = createGroup("g_page", "Page Test", [{ id: "u1", name: "A" }]);
+    for (let i = 1; i <= 12; i++) {
+      const day = String(i).padStart(2, "0");
+      addExpense(g, { description: `Exp ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-${day}T09:00:00.000Z` });
+    }
+    const p1 = listExpenses(g, { page: 1, pageSize: 10 });
+    const p2 = listExpenses(g, { page: 2, pageSize: 10 });
+    const p1Ids = new Set(p1.items.map((e) => e.id));
+    for (const item of p2.items) {
+      expect(p1Ids.has(item.id)).toBe(false);
+    }
+  });
+
+  it("[QP-QUIKSPL-257-3] returns remaining unread items on the second page without truncation", () => {
+    const g = createGroup("g_page", "Page Test", [{ id: "u1", name: "A" }]);
+    for (let i = 1; i <= 12; i++) {
+      const day = String(i).padStart(2, "0");
+      addExpense(g, { description: `Exp ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-${day}T09:00:00.000Z` });
+    }
+    const res = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(res.items).toHaveLength(2);
+  });
 });

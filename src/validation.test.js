@@ -71,6 +71,12 @@ describe("validateExpense currency", () => {
       "Currency must be a 3-letter code.",
     );
   });
+
+  it("[QP-QUIKSPL-255-3] rejects unsupported three-letter currency code with ValidationError on currency field", () => {
+    expect(() => validateExpense({ ...base, currency: "xyz" }, memberIds())).toThrow(
+      new ValidationError("currency", "Unsupported currency: XYZ."),
+    );
+  });
 });
 
 describe("validateExpense split", () => {

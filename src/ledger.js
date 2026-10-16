@@ -1,4 +1,4 @@
-import { computeShares } from "./splits.js";
+import { computeShares, scaleShares } from "./splits.js";
 import { ValidationError, validateCategory, validateDescription } from "./validation.js";
 
 /**
@@ -51,8 +51,16 @@ export function updateExpense(group, id, changes) {
   if (changes.description !== undefined) expense.description = validateDescription(changes.description);
   if (changes.category !== undefined) expense.category = validateCategory(changes.category);
   if (changes.amountMinor !== undefined) {
+    const originalAmountMinor = expense.amountMinor;
     expense.amountMinor = changes.amountMinor;
     if (changes.original) expense.original = changes.original;
+
+    // If split type is 'exact' and amountMinor has changed, scale shares proportionally
+    if (expense.splitType === 'exact' && originalAmountMinor !== expense.amountMinor) {
+      const originalShares = expense.participants.map(p => expense.splitDetails[p]);
+      const newShares = scaleShares(originalShares, originalAmountMinor, expense.amountMinor);
+      expense.splitDetails = Object.fromEntries(expense.participants.map((p, i) => [p, newShares[i]]));
+    }
   }
 
   expense.updatedAt = new Date().toISOString();

@@ -64,4 +64,56 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-252-1] limits returned expenses to specified page size", () => {
+    const g = createGroup("g-many", "Test Many", [{ id: "u1", name: "A" }]);
+    for (let i = 1; i <= 12; i++) {
+      const day = String(i).padStart(2, "0");
+      addExpense(g, {
+        description: `Expense ${i}`,
+        amountMinor: 100,
+        paidBy: "u1",
+        participants: ["u1"],
+        createdAt: `2026-10-${day}T09:00:00.000Z`,
+      });
+    }
+    const res = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(res.items).toHaveLength(10);
+  });
+
+  it("[QP-QUIKSPL-252-2] prevents duplicate items across adjacent expense pages", () => {
+    const g = createGroup("g-many-2", "Test Many 2", [{ id: "u1", name: "A" }]);
+    for (let i = 1; i <= 12; i++) {
+      const day = String(i).padStart(2, "0");
+      addExpense(g, {
+        description: `Expense ${i}`,
+        amountMinor: 100,
+        paidBy: "u1",
+        participants: ["u1"],
+        createdAt: `2026-10-${day}T09:00:00.000Z`,
+      });
+    }
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 });
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(page2.items).toHaveLength(2);
+    const page1Ids = new Set(page1.items.map((e) => e.id));
+    const overlap = page2.items.filter((e) => page1Ids.has(e.id));
+    expect(overlap).toHaveLength(0);
+  });
+
+  it("[QP-QUIKSPL-252-3] handles non-positive page size safely", () => {
+    const g = createGroup("g-ten", "Test Ten", [{ id: "u1", name: "A" }]);
+    for (let i = 1; i <= 10; i++) {
+      const day = String(i).padStart(2, "0");
+      addExpense(g, {
+        description: `Expense ${i}`,
+        amountMinor: 100,
+        paidBy: "u1",
+        participants: ["u1"],
+        createdAt: `2026-10-${day}T09:00:00.000Z`,
+      });
+    }
+    const res = listExpenses(g, { pageSize: 0 });
+    expect(res.pageSize).toBeGreaterThan(0);
+  });
 });

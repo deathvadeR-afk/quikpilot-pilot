@@ -64,4 +64,55 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-106-1] Displays correct number of items on page 1 with 12 expenses and page size 10", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], createdAt: `2026-10-0${i + 4}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items).toHaveLength(10);
+    expect(new Set(result.items.map(e => e.description)).size).toBe(10);
+  });
+
+  it("[QP-QUIKSPL-106-2] Displays correct number of items on page 2 with 12 expenses and page size 10", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], createdAt: `2026-10-0${i + 4}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(result.items).toHaveLength(2);
+    expect(new Set(result.items.map(e => e.description)).size).toBe(2);
+  });
+
+  it("[QP-QUIKSPL-106-3] Ensures no item repeats across pages with 12 expenses and page size 10", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], createdAt: `2026-10-0${i + 4}T09:00:00.000Z` });
+    }
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 }).items.map(e => e.description);
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 }).items.map(e => e.description);
+    const commonItems = page1.filter(item => page2.includes(item));
+    expect(commonItems).toHaveLength(0);
+  });
+
+  it("[QP-QUIKSPL-106-4] Displays correct number of items on a single page when total items are less than page size", () => {
+    const g = group();
+    for (let i = 0; i < 2; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], createdAt: `2026-10-0${i + 4}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items).toHaveLength(5);
+    expect(new Set(result.items.map(e => e.description)).size).toBe(5);
+  });
+
+  it("[QP-QUIKSPL-106-5] Displays correct number of items on the last page when total items are a multiple of page size", () => {
+    const g = group();
+    for (let i = 0; i < 17; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], createdAt: `2026-10-0${i + 4}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(result.items).toHaveLength(10);
+    expect(new Set(result.items.map(e => e.description)).size).toBe(10);
+  });
 });

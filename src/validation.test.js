@@ -66,6 +66,30 @@ describe("validateExpense currency", () => {
     expect(result.original).toEqual({ amountMinor: 10000, currency: "USD" });
   });
 
+  it("[QP-QUIKSPL-72-1] Converts 'usd' to USD equivalent", () => {
+    const result = validateExpense({ ...base, currency: "usd" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+    expect(result.original).toEqual({ amountMinor: 10000, currency: "USD" });
+  });
+
+  it("[QP-QUIKSPL-72-2] Converts 'USD' to USD equivalent", () => {
+    const result = validateExpense({ ...base, currency: "USD" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+    expect(result.original).toEqual({ amountMinor: 10000, currency: "USD" });
+  });
+
+  it("[QP-QUIKSPL-72-3] Rejects unsupported three-letter currency code 'XYZ'", () => {
+    expect(() => validateExpense({ ...base, currency: "XYZ" }, memberIds())).toThrow(
+      "Unsupported currency: XYZ.",
+    );
+  });
+
+  it("[QP-QUIKSPL-72-4] Rejects unsupported three-letter currency code 'xyz' with uppercase in message", () => {
+    expect(() => validateExpense({ ...base, currency: "xyz" }, memberIds())).toThrow(
+      "Unsupported currency: XYZ.",
+    );
+  });
+
   it("rejects a currency code that is not three letters", () => {
     expect(() => validateExpense({ ...base, currency: "US" }, memberIds())).toThrow(
       "Currency must be a 3-letter code.",

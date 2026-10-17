@@ -68,4 +68,89 @@ describe("computeShares", () => {
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
   });
+
+  it("[QP-QUIKSPL-237-1] Scales shares proportionally for an exact split when amount is increased", () => {
+    const initialExpense = {
+      amountMinor: 1000,
+      participants: ["a", "b"],
+      splitType: "exact",
+      splitDetails: { a: 600, b: 400 },
+    };
+    const newAmountMinor = 2000;
+    const shares = computeShares({
+      ...initialExpense,
+      amountMinor: newAmountMinor,
+      original: initialExpense,
+    });
+    expect(shares).toEqual([1200, 800]);
+    expect(sum(shares)).toBe(newAmountMinor);
+  });
+
+  it("[QP-QUIKSPL-237-2] Scales shares proportionally for an exact split when amount is decreased", () => {
+    const initialExpense = {
+      amountMinor: 2000,
+      participants: ["a", "b"],
+      splitType: "exact",
+      splitDetails: { a: 1200, b: 800 },
+    };
+    const newAmountMinor = 1000;
+    const shares = computeShares({
+      ...initialExpense,
+      amountMinor: newAmountMinor,
+      original: initialExpense,
+    });
+    expect(shares).toEqual([600, 400]);
+    expect(sum(shares)).toBe(newAmountMinor);
+  });
+
+  it("[QP-QUIKSPL-237-3] Handles rounding for minor units with largest remainders, earliest first", () => {
+    const initialExpense = {
+      amountMinor: 1000,
+      participants: ["a", "b", "c"],
+      splitType: "exact",
+      splitDetails: { a: 333, b: 333, c: 334 },
+    };
+    const newAmountMinor = 1001;
+    const shares = computeShares({
+      ...initialExpense,
+      amountMinor: newAmountMinor,
+      original: initialExpense,
+    });
+    expect(shares).toEqual([333, 333, 335]);
+    expect(sum(shares)).toBe(newAmountMinor);
+  });
+
+  it("[QP-QUIKSPL-237-4] Does not scale shares for 'equal' split type when amount is edited", () => {
+    const initialExpense = {
+      amountMinor: 1000,
+      participants: ["a", "b"],
+      splitType: "equal",
+      splitDetails: { a: 500, b: 500 },
+    };
+    const newAmountMinor = 2000;
+    const shares = computeShares({
+      ...initialExpense,
+      amountMinor: newAmountMinor,
+      original: initialExpense,
+    });
+    expect(shares).toEqual([1000, 1000]);
+    expect(sum(shares)).toBe(newAmountMinor);
+  });
+
+  it("[QP-QUIKSPL-237-5] Handles zero initial shares correctly when scaling", () => {
+    const initialExpense = {
+      amountMinor: 1000,
+      participants: ["a", "b"],
+      splitType: "exact",
+      splitDetails: { a: 1000, b: 0 },
+    };
+    const newAmountMinor = 2000;
+    const shares = computeShares({
+      ...initialExpense,
+      amountMinor: newAmountMinor,
+      original: initialExpense,
+    });
+    expect(shares).toEqual([2000, 0]);
+    expect(sum(shares)).toBe(newAmountMinor);
+  });
 });

@@ -43,7 +43,29 @@ export function computeShares(expense) {
       return splitEvenly(amountMinor, participants.length);
 
     case "exact":
-      return participants.map((p) => splitDetails[p]);
+      const oldTotal = participants.reduce((sum, p) => sum + (splitDetails[p] || 0), 0);
+      if (oldTotal === 0) {
+        return participants.map(() => 0);
+      }
+      const proportions = participants.map((p) => (splitDetails[p] || 0) / oldTotal);
+      const newShares = proportions.map((prop) => Math.floor(amountMinor * prop));
+      let remainder = amountMinor - newShares.reduce((sum, share) => sum + share, 0);
+
+      const sortedParticipants = participants
+        .map((p, i) => ({ index: i, originalShare: splitDetails[p] || 0, proportion: proportions[i] }))
+        .sort((a, b) => {
+          if (b.proportion === a.proportion) {
+            return a.index - b.index; // Tie-break by original index (earliest first)
+          }
+          return b.proportion - a.proportion; // Largest proportion first
+        });
+
+      for (const { index } of sortedParticipants) {
+        if (remainder === 0) break;
+        newShares[index] += 1;
+        remainder -= 1;
+      }
+      return newShares;
 
     case "percent":
       return participants.map((p) => Math.round((amountMinor * splitDetails[p]) / 100));

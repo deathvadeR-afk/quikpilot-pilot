@@ -64,4 +64,30 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-134-1] Filters expenses to include items on the plain end date", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    addExpense(g, { description: "First", amountMinor: 100, paidBy: "u1", participants: ["u1"], createdAt: "2026-10-01T12:00:00.000Z" });
+    addExpense(g, { description: "Farewell drinks", amountMinor: 100, paidBy: "u1", participants: ["u1"], createdAt: "2026-10-02T10:00:00.000Z" });
+    addExpense(g, { description: "Lunch", amountMinor: 100, paidBy: "u1", participants: ["u1"], createdAt: "2026-10-02T15:00:00.000Z" });
+    addExpense(g, { description: "Third", amountMinor: 100, paidBy: "u1", participants: ["u1"], createdAt: "2026-10-03T09:00:00.000Z" });
+    const result = listExpenses(g, { from: "2026-10-02", to: "2026-10-02" });
+    expect(result.items.map((e) => e.description)).toEqual(["Lunch", "Farewell drinks"]);
+  });
+
+  it("[QP-QUIKSPL-134-3] Excludes expenses beyond the plain end date", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    addExpense(g, { description: "Second", amountMinor: 100, paidBy: "u1", participants: ["u1"], createdAt: "2026-10-02T10:00:00.000Z" });
+    addExpense(g, { description: "Third", amountMinor: 100, paidBy: "u1", participants: ["u1"], createdAt: "2026-10-03T09:00:00.000Z" });
+    const result = listExpenses(g, { from: "2026-10-02", to: "2026-10-02" });
+    expect(result.items.map((e) => e.description)).toEqual(["Second"]);
+  });
+
+  it("[QP-QUIKSPL-134-2] Maintains existing behavior for full timestamp end dates", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    addExpense(g, { description: "Early", amountMinor: 100, paidBy: "u1", participants: ["u1"], createdAt: "2026-10-02T10:00:00.000Z" });
+    addExpense(g, { description: "Late", amountMinor: 100, paidBy: "u1", participants: ["u1"], createdAt: "2026-10-02T15:00:00.000Z" });
+    const result = listExpenses(g, { from: "2026-10-02", to: "2026-10-02T12:00:00.000Z" });
+    expect(result.items.map((e) => e.description)).toEqual(["Early"]);
+  });
 });

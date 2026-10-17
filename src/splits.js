@@ -45,8 +45,42 @@ export function computeShares(expense) {
     case "exact":
       return participants.map((p) => splitDetails[p]);
 
-    case "percent":
-      return participants.map((p) => Math.round((amountMinor * splitDetails[p]) / 100));
+    case "percent": {
+      const unroundedShares = participants.map((p) => (amountMinor * splitDetails[p]) / 100);
+      const initialRoundedShares = unroundedShares.map((share) => Math.round(share));
+      let sumRoundedShares = initialRoundedShares.reduce((a, b) => a + b, 0);
+      let remainder = amountMinor - sumRoundedShares;
+
+      if (remainder !== 0) {
+        const fractionalRemainders = unroundedShares.map((share, i) => ({
+          i,
+          rem: share - Math.round(share),
+        }));
+
+        // Sort by absolute fractional remainder (descending), then by original index (ascending)
+        fractionalRemainders.sort((a, b) => {
+          // Sort by absolute fractional remainder (descending), then by original index (ascending)
+          const absRemA = Math.abs(a.rem);
+          const absRemB = Math.abs(b.rem);
+          if (absRemB !== absRemA) {
+            return absRemB - absRemA;
+          }
+          return a.i - b.i;
+        });
+
+        for (const { i } of fractionalRemainders) {
+          if (remainder === 0) break;
+          if (remainder > 0) {
+            initialRoundedShares[i] += 1;
+            remainder -= 1;
+          } else if (remainder < 0) {
+            initialRoundedShares[i] -= 1;
+            remainder += 1;
+          }
+        }
+      }
+      return initialRoundedShares;
+    }
 
     case "shares":
       return weighted(

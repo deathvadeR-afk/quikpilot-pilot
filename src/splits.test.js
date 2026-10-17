@@ -68,4 +68,66 @@ describe("computeShares", () => {
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
   });
+
+  it("[QP-QUIKSPL-213-1] Scales shares proportionally when amount is doubled", () => {
+    const shares = computeShares({
+      amountMinor: 2000,
+      participants: ["u1", "u2"],
+      splitType: "exact",
+      splitDetails: { u1: 600, u2: 400 },
+      originalAmountMinor: 1000
+    });
+    expect(shares).toEqual([1200, 800]);
+    expect(sum(shares)).toBe(2000);
+  });
+
+  it("[QP-QUIKSPL-213-2] Scales shares proportionally when amount is halved", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["u1", "u2", "u3"],
+      splitType: "exact",
+      splitDetails: { u1: 1000, u2: 500, u3: 500 },
+      originalAmountMinor: 2000
+    });
+    expect(shares).toEqual([500, 250, 250]);
+    expect(sum(shares)).toBe(1000);
+  });
+
+  it("[QP-QUIKSPL-213-3] Distributes remainder to largest share first", () => {
+    const shares = computeShares({
+      amountMinor: 1001,
+      participants: ["u1", "u2", "u3"],
+      splitType: "exact",
+      splitDetails: { u1: 333, u2: 333, u3: 334 },
+      originalAmountMinor: 1000
+    });
+    expect(shares).toEqual([333, 333, 335]);
+    expect(sum(shares)).toBe(1001);
+  });
+
+  it("[QP-QUIKSPL-213-4] Distributes remainder to earliest share when remainders are equal", () => {
+    const shares = computeShares({
+      amountMinor: 1001,
+      participants: ["u1", "u2"],
+      splitType: "exact",
+      splitDetails: { u1: 500, u2: 500 },
+      originalAmountMinor: 1000
+    });
+    expect(shares).toEqual([501, 500]);
+    expect(sum(shares)).toBe(1001);
+  });
+
+  it("[QP-QUIKSPL-213-5] Handles zero amount change correctly", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["u1", "u2"],
+      splitType: "exact",
+      splitDetails: { u1: 750, u2: 250 },
+      originalAmountMinor: 1000
+    });
+    // This test should fail because the current implementation does not scale when originalAmountMinor === amountMinor.
+    // The expected behavior is that shares are recalculated even if the amount doesn't change, to ensure consistency.
+    expect(shares).toEqual([750, 250]);
+    expect(sum(shares)).toBe(1000);
+  });
 });

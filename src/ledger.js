@@ -51,8 +51,35 @@ export function updateExpense(group, id, changes) {
   if (changes.description !== undefined) expense.description = validateDescription(changes.description);
   if (changes.category !== undefined) expense.category = validateCategory(changes.category);
   if (changes.amountMinor !== undefined) {
-    expense.amountMinor = changes.amountMinor;
-    if (changes.original) expense.original = changes.original;
+    const oldAmountMinor = expense.amountMinor;
+    if (changes.amountMinor !== undefined) {
+      expense.amountMinor = changes.amountMinor;
+      if (changes.original) expense.original = changes.original;
+
+      if (expense.splitType === "exact" && expense.amountMinor !== oldAmountMinor) {
+        const newShares = computeShares({
+          amountMinor: expense.amountMinor,
+          participants: expense.participants,
+          splitType: expense.splitType,
+          splitDetails: expense.splitDetails,
+        });
+        expense.splitDetails = Object.fromEntries(
+          expense.participants.map((p, i) => [p, newShares[i]]),
+        );
+      }
+    } else if (expense.splitType === "exact" && changes.amountMinor === undefined) {
+      // If amountMinor is not changed, but other fields are, ensure shares are still valid
+      // This case might occur if only description or category is updated for an exact split
+      const newShares = computeShares({
+        amountMinor: expense.amountMinor,
+        participants: expense.participants,
+        splitType: expense.splitType,
+        splitDetails: expense.splitDetails,
+      });
+      expense.splitDetails = Object.fromEntries(
+        expense.participants.map((p, i) => [p, newShares[i]]),
+      );
+    }
   }
 
   expense.updatedAt = new Date().toISOString();

@@ -166,6 +166,13 @@ describe("updateExpense", () => {
     deleteExpense(g, "exp_1");
     expect(() => updateExpense(g, "exp_1", { description: "x" })).toThrow("deleted expense cannot be edited");
   });
+
+  it("[QP-QUIKSPL-213-6] Ensures updateExpense calls computeShares for exact splits", () => {
+    const g = group();
+    addExpense(g, { description: "Exact Split", amountMinor: 1000, paidBy: "u1", participants: ["u1", "u2"], splitType: "exact", splitDetails: { u1: 600, u2: 400 } });
+    const updated = updateExpense(g, "exp_1", { amountMinor: 2000 });
+    expect(Object.values(updated.splitDetails)).toEqual([1200, 800]);
+  });
 });
 
 describe("members", () => {

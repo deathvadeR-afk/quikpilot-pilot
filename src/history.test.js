@@ -65,3 +65,58 @@ describe("listExpenses", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
 });
+
+describe("listExpenses paging", () => {
+  function twelveExpenses() {
+    const g = createGroup("g12", "Twelve", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    for (let i = 1; i <= 12; i++) {
+      addExpense(g, {
+        description: `E${i}`,
+        amountMinor: 100,
+        paidBy: "u1",
+        participants: ["u1", "u2"],
+        category: "food",
+        createdAt: `2026-10-${String(i).padStart(2, "0")}T09:00:00.000Z`,
+      });
+    }
+    return g;
+  }
+
+  it("[QP-QUIKSPL-275-1] Page 1 returns exactly 10 expenses when 12 exist and page size is 10", () => {
+    const result = listExpenses(twelveExpenses(), { page: 1, pageSize: 10 });
+    expect(result.items).toHaveLength(10);
+  });
+
+  it("[QP-QUIKSPL-275-2] Page 2 returns the remaining 2 expenses without repeating page 1", () => {
+    const g = twelveExpenses();
+    const first = listExpenses(g, { page: 1, pageSize: 10 }).items.map((e) => e.id);
+    const second = listExpenses(g, { page: 2, pageSize: 10 }).items.map((e) => e.id);
+    expect(second).toHaveLength(2);
+    expect(second.filter((id) => first.includes(id))).toEqual([]);
+  });
+
+  it("[QP-QUIKSPL-275-3] No expense appears on two pages when the list is paged through completely", () => {
+    const g = twelveExpenses();
+    const collected = [];
+    for (let page = 1; page <= 5; page++) {
+      const items = listExpenses(g, { page, pageSize: 10 }).items;
+      if (items.length === 0) break;
+      collected.push(...items.map((e) => e.id));
+    }
+    expect(collected).toHaveLength(12);
+    expect(new Set(collected).size).toBe(12);
+  });
+
+  it("[QP-QUIKSPL-275-4] Each page holds at most pageSize expenses for any page size", () => {
+    const g = twelveExpenses();
+    for (const pageSize of [1, 3, 5, 10]) {
+      for (let page = 1; page <= 13; page++) {
+        const items = listExpenses(g, { page, pageSize }).items;
+        expect(items.length).toBeLessThanOrEqual(pageSize);
+      }
+    }
+  });
+});

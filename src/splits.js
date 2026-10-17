@@ -35,6 +35,60 @@ export function weighted(total, weights) {
 }
 
 /** What each participant owes for one expense, in participant order. */
+export function scaleExactShares(originalAmountMinor, newAmountMinor, splitDetails, participants) {
+  if (newAmountMinor < 0) {
+    throw new Error("New amount cannot be negative.");
+  }
+
+  const originalShares = participants.map((p) => splitDetails[p]);
+  const originalTotal = originalShares.reduce((a, b) => a + b, 0);
+
+  if (originalTotal === 0) {
+    // If original total was 0, and new amount is also 0, shares remain 0.
+    // If new amount is not 0, distribute equally or throw error if not possible.
+    if (newAmountMinor === 0) {
+      return Object.fromEntries(participants.map((p) => [p, 0]));
+    } else {
+      // This case might need more specific handling based on business rules
+      // For now, let's assume it's an invalid state or requires manual intervention
+      throw new Error("Cannot scale shares from a zero total to a non-zero amount.");
+    }
+  }
+
+  const scaleFactor = newAmountMinor / originalTotal;
+  const scaledShares = originalShares.map((share) => share * scaleFactor);
+
+  const roundedShares = scaledShares.map((share) => Math.floor(share));
+  let remainder = newAmountMinor - roundedShares.reduce((a, b) => a + b, 0);
+
+  if (remainder < 0) {
+    throw new Error("Scaling resulted in a negative remainder, which should not happen with floor rounding.");
+  }
+
+  const fractionalRemainders = scaledShares.map((share, i) => ({
+    i,
+    rem: share - Math.floor(share),
+    originalIndex: i,
+  }));
+
+  // Sort by largest fractional remainder, then by original index for ties
+  fractionalRemainders.sort((a, b) => b.rem - a.rem || a.originalIndex - b.originalIndex);
+
+  for (const { i } of fractionalRemainders) {
+    if (remainder === 0) break;
+    roundedShares[i] += 1;
+    remainder -= 1;
+  }
+
+  // Validate that no share became negative after scaling and rounding
+  if (roundedShares.some((share) => share < 0)) {
+    throw new Error("Scaling would result in a negative share.");
+  }
+
+  return Object.fromEntries(participants.map((p, i) => [p, roundedShares[i]]));
+}
+
+/** What each participant owes for one expense, in participant order. */
 export function computeShares(expense) {
   const { amountMinor, participants, splitType = "equal", splitDetails } = expense;
 

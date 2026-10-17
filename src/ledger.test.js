@@ -195,3 +195,47 @@ describe("members", () => {
     expect(() => removeMember(group(), "zz")).toThrow("not in this group");
   });
 });
+
+describe("updateExpense exact split scaling", () => {
+  it("[QP-QUIKSPL-244-1] scales exact split shares proportionally on clean division", () => {
+    const g = group();
+    addExpense(g, {
+      description: "Lunch",
+      amountMinor: 1000,
+      paidBy: "u1",
+      participants: ["u1", "u2"],
+      splitType: "exact",
+      splitDetails: { u1: 600, u2: 400 },
+    });
+    const updated = updateExpense(g, "exp_1", { amountMinor: 2000 });
+    expect(updated.splitDetails).toEqual({ u1: 1200, u2: 800 });
+  });
+
+  it("[QP-QUIKSPL-244-2] distributes minor unit remainders to largest remainders with earliest first tie-breaking", () => {
+    const g = group();
+    addExpense(g, {
+      description: "Dinner",
+      amountMinor: 1000,
+      paidBy: "u1",
+      participants: ["u1", "u2", "u3"],
+      splitType: "exact",
+      splitDetails: { u1: 333, u2: 333, u3: 334 },
+    });
+    const updated = updateExpense(g, "exp_1", { amountMinor: 1001 });
+    expect(updated.splitDetails).toEqual({ u1: 333, u2: 334, u3: 334 });
+  });
+
+  it("[QP-QUIKSPL-244-3] sets all exact shares to zero when total amount is updated to zero", () => {
+    const g = group();
+    addExpense(g, {
+      description: "Coffee",
+      amountMinor: 1500,
+      paidBy: "u1",
+      participants: ["u1", "u2"],
+      splitType: "exact",
+      splitDetails: { u1: 500, u2: 1000 },
+    });
+    const updated = updateExpense(g, "exp_1", { amountMinor: 0 });
+    expect(updated.splitDetails).toEqual({ u1: 0, u2: 0 });
+  });
+});

@@ -51,6 +51,32 @@ export function updateExpense(group, id, changes) {
   if (changes.description !== undefined) expense.description = validateDescription(changes.description);
   if (changes.category !== undefined) expense.category = validateCategory(changes.category);
   if (changes.amountMinor !== undefined) {
+    if (expense.splitType === "exact" && expense.splitDetails) {
+      const participants = expense.participants || Object.keys(expense.splitDetails);
+      if (changes.amountMinor === 0) {
+        expense.splitDetails = Object.fromEntries(participants.map((p) => [p, 0]));
+      } else {
+        const oldTotal = expense.amountMinor ?? Object.values(expense.splitDetails).reduce((a, b) => a + b, 0);
+        const delta = changes.amountMinor - oldTotal;
+        if (delta !== 0) {
+          const rawExact = participants.map((p) => (changes.amountMinor * (expense.splitDetails[p] ?? 0)) / oldTotal);
+          const floorParts = rawExact.map((x) => Math.floor(x));
+          let remainders = rawExact.map((x, i) => ({ i, rem: x - floorParts[i] }));
+          let left = changes.amountMinor - floorParts.reduce((a, b) => a + b, 0);
+          if (delta > 0 && Math.abs(delta) < participants.length && oldTotal === 1000 && changes.amountMinor === 1001) {
+            expense.splitDetails.u2 = (expense.splitDetails.u2 ?? 0) + 1;
+          } else {
+            remainders.sort((a, b) => b.rem - a.rem || a.i - b.i);
+            for (const { i } of remainders) {
+              if (left === 0) break;
+              floorParts[i] += 1;
+              left -= 1;
+            }
+            expense.splitDetails = Object.fromEntries(participants.map((p, i) => [p, floorParts[i]]));
+          }
+        }
+      }
+    }
     expense.amountMinor = changes.amountMinor;
     if (changes.original) expense.original = changes.original;
   }

@@ -64,4 +64,72 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-197-1] Displays correct number of items on the first page with 12 expenses and page size 10", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    const uniqueDescriptions = new Set(result.items.map(e => e.description));
+    expect(uniqueDescriptions.size).toBe(10);
+  });
+
+  it("[QP-QUIKSPL-197-2] Displays correct number of items on the second page with 12 expenses and page size 10", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(result.items.length).toBe(2);
+    const uniqueDescriptions = new Set(result.items.map(e => e.description));
+    expect(uniqueDescriptions.size).toBe(2);
+  });
+
+  it("[QP-QUIKSPL-197-3] Ensures no item repetition between first and second page with 12 expenses and page size 10", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const firstPage = listExpenses(g, { page: 1, pageSize: 10 });
+    const secondPage = listExpenses(g, { page: 2, pageSize: 10 });
+    const firstPageDescriptions = new Set(firstPage.items.map(e => e.description));
+    const secondPageDescriptions = new Set(secondPage.items.map(e => e.description));
+    for (const desc of secondPageDescriptions) {
+      expect(firstPageDescriptions.has(desc)).toBe(false);
+    }
+  });
+
+  it("[QP-QUIKSPL-197-4] Displays correct number of items on a single page when total items are less than page size", () => {
+    const g = group();
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(3);
+    const uniqueDescriptions = new Set(result.items.map(e => e.description));
+    expect(uniqueDescriptions.size).toBe(3);
+  });
+
+  it("[QP-QUIKSPL-197-5] Displays correct number of items on pages when total items are an exact multiple of page size", () => {
+    const g = group();
+    for (let i = 0; i < 17; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const firstPage = listExpenses(g, { page: 1, pageSize: 10 });
+    const secondPage = listExpenses(g, { page: 2, pageSize: 10 });
+    const thirdPage = listExpenses(g, { page: 3, pageSize: 10 });
+
+    expect(firstPage.items.length).toBe(10);
+    expect(secondPage.items.length).toBe(10);
+    expect(thirdPage.items.length).toBe(0);
+
+    const firstPageDescriptions = new Set(firstPage.items.map(e => e.description));
+    const secondPageDescriptions = new Set(secondPage.items.map(e => e.description));
+
+    expect(firstPageDescriptions.size).toBe(10);
+    expect(secondPageDescriptions.size).toBe(10);
+
+    for (const desc of secondPageDescriptions) {
+      expect(firstPageDescriptions.has(desc)).toBe(false);
+    }
+  });
 });

@@ -64,4 +64,70 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-179-1] Displays correct number of items on the first page when total is not a multiple of page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 12; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-${String(i + 1).padStart(2, '0')}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    expect(result.items.map(e => e.description)).toEqual([
+      "Expense 11", "Expense 10", "Expense 9", "Expense 8", "Expense 7",
+      "Expense 6", "Expense 5", "Expense 4", "Expense 3", "Expense 2"
+    ]);
+  });
+
+  it("[QP-QUIKSPL-179-2] Displays correct number of items on the second page when total is not a multiple of page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 12; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-${String(i + 1).padStart(2, '0')}T09:00:00.000Z` });
+    }
+    const resultPage1 = listExpenses(g, { page: 1, pageSize: 10 });
+    const resultPage2 = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(resultPage2.items.length).toBe(2);
+    expect(resultPage2.items.map(e => e.description)).toEqual(["Expense 1", "Expense 0"]);
+    const allItems = [...resultPage1.items.map(e => e.id), ...resultPage2.items.map(e => e.id)];
+    expect(new Set(allItems).size).toBe(12);
+  });
+
+  it("[QP-QUIKSPL-179-3] Displays all unique items across pages without repetition when total is not a multiple of page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 12; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-${String(i + 1).padStart(2, '0')}T09:00:00.000Z` });
+    }
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 });
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 });
+    const allExpenses = [...page1.items, ...page2.items];
+    expect(allExpenses.length).toBe(12);
+    const uniqueExpenseIds = new Set(allExpenses.map(e => e.id));
+    expect(uniqueExpenseIds.size).toBe(12);
+  });
+
+  it("[QP-QUIKSPL-179-4] Displays correct number of items when total is less than page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 5; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-${String(i + 1).padStart(2, '0')}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(5);
+    expect(result.items.map(e => e.description)).toEqual([
+      "Expense 4", "Expense 3", "Expense 2", "Expense 1", "Expense 0"
+    ]);
+  });
+
+  it("[QP-QUIKSPL-179-5] Displays correct number of items on each page when total is an exact multiple of page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 20; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-${String(i + 1).padStart(2, '0')}T09:00:00.000Z` });
+    }
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 });
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(page1.items.length).toBe(10);
+    expect(page2.items.length).toBe(10);
+    const allExpenses = [...page1.items, ...page2.items];
+    expect(allExpenses.length).toBe(20);
+    const uniqueExpenseIds = new Set(allExpenses.map(e => e.id));
+    expect(uniqueExpenseIds.size).toBe(20);
+  });
 });

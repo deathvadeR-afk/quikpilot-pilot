@@ -22,7 +22,16 @@ export function listExpenses(group, options = {}) {
   if (memberId) items = items.filter((e) => e.paidBy === memberId || e.participants.includes(memberId));
   if (category) items = items.filter((e) => e.category === category);
   if (from) items = items.filter((e) => e.createdAt >= from);
-  if (to) items = items.filter((e) => e.createdAt <= to);
+  if (to) {
+    const toDate = new Date(to);
+    // Check if 'to' is a plain date (YYYY-MM-DD) by seeing if the time is 00:00:00.000Z
+    if (toDate.toISOString().endsWith('T00:00:00.000Z') && to.length === 10) {
+      toDate.setUTCHours(23, 59, 59, 999);
+      items = items.filter((e) => e.createdAt <= toDate.toISOString());
+    } else {
+      items = items.filter((e) => e.createdAt <= to);
+    }
+  }
 
   items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
 

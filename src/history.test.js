@@ -64,4 +64,42 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-253-1] limits page results to the requested page size on the first page", () => {
+    const g = createGroup("g-many", "Many Expenses", [{ id: "u1", name: "A" }, { id: "u2", name: "B" }]);
+    for (let i = 1; i <= 12; i++) {
+      const day = String(i).padStart(2, "0");
+      addExpense(g, {
+        description: `Expense ${i}`,
+        amountMinor: 100 * i,
+        paidBy: "u1",
+        participants: ["u1", "u2"],
+        category: "food",
+        createdAt: `2026-10-${day}T12:00:00.000Z`,
+      });
+    }
+    const res = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(res.items.length).toBe(10);
+  });
+
+  it("[QP-QUIKSPL-253-2] prevents duplicate items across consecutive pages", () => {
+    const g = createGroup("g-many", "Many Expenses", [{ id: "u1", name: "A" }, { id: "u2", name: "B" }]);
+    for (let i = 1; i <= 12; i++) {
+      const day = String(i).padStart(2, "0");
+      addExpense(g, {
+        description: `Expense ${i}`,
+        amountMinor: 100 * i,
+        paidBy: "u1",
+        participants: ["u1", "u2"],
+        category: "food",
+        createdAt: `2026-10-${day}T12:00:00.000Z`,
+      });
+    }
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 });
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(page2.items.length).toBe(2);
+    const page1Ids = new Set(page1.items.map((e) => e.id));
+    const overlaps = page2.items.filter((e) => page1Ids.has(e.id));
+    expect(overlaps).toHaveLength(0);
+  });
 });

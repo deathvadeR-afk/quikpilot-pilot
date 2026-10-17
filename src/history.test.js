@@ -64,4 +64,76 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-203-1] Displays correct number of items on first page when total is slightly over page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 12; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-01T09:00:0${i}Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    expect(new Set(result.items.map(e => e.description)).size).toBe(10);
+    expect(result.total).toBe(12);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(true);
+  });
+
+  it("[QP-QUIKSPL-203-2] Displays correct number of items on second page when total is slightly over page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 12; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-01T09:00:0${i}Z` });
+    }
+    const resultPage1 = listExpenses(g, { page: 1, pageSize: 10 });
+    const resultPage2 = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(resultPage2.items.length).toBe(2);
+    expect(new Set(resultPage2.items.map(e => e.description)).size).toBe(2);
+    const page1Descriptions = resultPage1.items.map(e => e.description);
+    const page2Descriptions = resultPage2.items.map(e => e.description);
+    page2Descriptions.forEach(desc => {
+      expect(page1Descriptions).not.toContain(desc);
+    });
+    expect(resultPage2.total).toBe(12);
+    expect(resultPage2.page).toBe(2);
+    expect(resultPage2.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-203-3] No duplication when total items is exact multiple of page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 20; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-01T09:00:0${i < 10 ? '0' + i : i}Z` });
+    }
+    const resultPage1 = listExpenses(g, { page: 1, pageSize: 10 });
+    const resultPage2 = listExpenses(g, { page: 2, pageSize: 10 });
+
+    expect(resultPage1.items.length).toBe(10);
+    expect(new Set(resultPage1.items.map(e => e.description)).size).toBe(10);
+    expect(resultPage1.total).toBe(20);
+    expect(resultPage1.page).toBe(1);
+    expect(resultPage1.hasMore).toBe(true);
+
+    expect(resultPage2.items.length).toBe(10);
+    expect(new Set(resultPage2.items.map(e => e.description)).size).toBe(10);
+    expect(resultPage2.total).toBe(20);
+    expect(resultPage2.page).toBe(2);
+    expect(resultPage2.hasMore).toBe(false);
+
+    const page1Descriptions = resultPage1.items.map(e => e.description);
+    const page2Descriptions = resultPage2.items.map(e => e.description);
+    page2Descriptions.forEach(desc => {
+      expect(page1Descriptions).not.toContain(desc);
+    });
+  });
+
+  it("[QP-QUIKSPL-203-4] Displays all items on a single page when total is less than page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 5; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-01T09:00:0${i}Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(5);
+    expect(new Set(result.items.map(e => e.description)).size).toBe(5);
+    expect(result.total).toBe(5);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(false);
+  });
 });

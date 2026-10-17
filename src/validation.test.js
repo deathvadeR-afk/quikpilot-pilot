@@ -66,6 +66,39 @@ describe("validateExpense currency", () => {
     expect(result.original).toEqual({ amountMinor: 10000, currency: "USD" });
   });
 
+  it("[QP-QUIKSPL-201-6] Successfully saves expense with supported uppercase currency code", () => {
+    const result = validateExpense({ ...base, amount: "200.00", currency: "GBP" }, memberIds());
+    expect(result.amountMinor).toBe(20000 * 105.75); // 200.00 * 105.75
+    expect(result.original).toEqual({ amountMinor: 20000, currency: "GBP" });
+  });
+
+  it("[QP-QUIKSPL-201-1] Converts expense with lowercase currency code correctly", () => {
+    const result = validateExpense({ ...base, currency: "usd" }, memberIds());
+    expect(result.amountMinor).toBe(832000); // 100 * 83.2
+    expect(result.original).toEqual({ amountMinor: 10000, currency: "USD" });
+  });
+
+  it("[QP-QUIKSPL-201-2] Converts expense with mixed-case currency code correctly", () => {
+    const result = validateExpense({ ...base, amount: "50.00", currency: "EuR" }, memberIds());
+    expect(result.amountMinor).toBe(452500); // 50 * 90.5
+    expect(result.original).toEqual({ amountMinor: 5000, currency: "EUR" });
+  });
+
+  it("[QP-QUIKSPL-201-3] Rejects unsupported uppercase currency code with ValidationError", () => {
+    expect(() => validateExpense({ ...base, currency: "XYZ" }, memberIds())).toThrow(ValidationError);
+    expect(() => validateExpense({ ...base, currency: "XYZ" }, memberIds())).toThrow("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-201-4] Rejects unsupported lowercase currency code with ValidationError after normalization", () => {
+    expect(() => validateExpense({ ...base, currency: "xyz" }, memberIds())).toThrow(ValidationError);
+    expect(() => validateExpense({ ...base, currency: "xyz" }, memberIds())).toThrow("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-201-5] Rejects unsupported mixed-case currency code with ValidationError after normalization", () => {
+    expect(() => validateExpense({ ...base, currency: "xYz" }, memberIds())).toThrow(ValidationError);
+    expect(() => validateExpense({ ...base, currency: "xYz" }, memberIds())).toThrow("Unsupported currency: XYZ.");
+  });
+
   it("rejects a currency code that is not three letters", () => {
     expect(() => validateExpense({ ...base, currency: "US" }, memberIds())).toThrow(
       "Currency must be a 3-letter code.",

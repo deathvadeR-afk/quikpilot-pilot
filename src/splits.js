@@ -46,7 +46,19 @@ export function computeShares(expense) {
       return participants.map((p) => splitDetails[p]);
 
     case "percent":
-      return participants.map((p) => Math.round((amountMinor * splitDetails[p]) / 100));
+      const parts = participants.map((p) => ({ i: p, share: (amountMinor * splitDetails[p]) / 100 }));
+      const roundedParts = parts.map((p) => Math.floor(p.share));
+      let left = amountMinor - roundedParts.reduce((a, b) => a + b, 0);
+
+      const remainders = parts.map((p, idx) => ({ idx, rem: p.share - Math.floor(p.share) }));
+      remainders.sort((a, b) => b.rem - a.rem || a.idx - b.idx);
+
+      for (const { idx } of remainders) {
+        if (left === 0) break;
+        roundedParts[idx] += 1;
+        left -= 1;
+      }
+      return roundedParts;
 
     case "shares":
       return weighted(

@@ -2,6 +2,14 @@ import { describe, it, expect } from "vitest";
 import { addExpense, createGroup, deleteExpense } from "./ledger.js";
 import { listExpenses, MAX_PAGE_SIZE } from "./history.js";
 
+function createManyExpenses(count) {
+  const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+  for (let i = 0; i < count; i++) {
+    addExpense(g, { description: `Expense ${i + 1}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-01T${String(i).padStart(2, '0')}:00:00.000Z` });
+  }
+  return g;
+}
+
 function group() {
   const g = createGroup("g", "Test", [
     { id: "u1", name: "A" },
@@ -63,5 +71,68 @@ describe("listExpenses", () => {
 
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
+  });
+
+  it("[QP-QUIKSPL-185-1] Displays correct number of items on the first page with overflow", () => {
+    const g = createManyExpenses(12);
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    expect(new Set(result.items.map(e => e.description)).size).toBe(10);
+    expect(result.page).toBe(1);
+    expect(result.pageSize).toBe(10);
+    expect(result.total).toBe(12);
+    expect(result.hasMore).toBe(true);
+  });
+
+  it("[QP-QUIKSPL-185-2] Displays correct number of items on the second page with overflow", () => {
+    const g = createManyExpenses(12);
+    const page1Result = listExpenses(g, { page: 1, pageSize: 10 });
+    const page2Result = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(page2Result.items.length).toBe(2);
+    expect(new Set(page2Result.items.map(e => e.description)).size).toBe(2);
+    const page1Descriptions = page1Result.items.map(e => e.description);
+    const page2Descriptions = page2Result.items.map(e => e.description);
+    page2Descriptions.forEach(desc => {
+      expect(page1Descriptions).not.toContain(desc);
+    });
+    expect(page2Result.page).toBe(2);
+    expect(page2Result.pageSize).toBe(10);
+    expect(page2Result.total).toBe(12);
+    expect(page2Result.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-185-3] Displays all items correctly when total is less than page size", () => {
+    const g = createManyExpenses(5);
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(5);
+    expect(new Set(result.items.map(e => e.description)).size).toBe(5);
+    expect(result.page).toBe(1);
+    expect(result.pageSize).toBe(10);
+    expect(result.total).toBe(5);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-185-4] Displays all items correctly when total is an exact multiple of page size", () => {
+    const g = createManyExpenses(20);
+    const page1Result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(page1Result.items.length).toBe(10);
+    expect(new Set(page1Result.items.map(e => e.description)).size).toBe(10);
+    expect(page1Result.page).toBe(1);
+    expect(page1Result.pageSize).toBe(10);
+    expect(page1Result.total).toBe(20);
+    expect(page1Result.hasMore).toBe(true);
+
+    const page2Result = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(page2Result.items.length).toBe(10);
+    expect(new Set(page2Result.items.map(e => e.description)).size).toBe(10);
+    const page1Descriptions = page1Result.items.map(e => e.description);
+    const page2Descriptions = page2Result.items.map(e => e.description);
+    page2Descriptions.forEach(desc => {
+      expect(page1Descriptions).not.toContain(desc);
+    });
+    expect(page2Result.page).toBe(2);
+    expect(page2Result.pageSize).toBe(10);
+    expect(page2Result.total).toBe(20);
+    expect(page2Result.hasMore).toBe(false);
   });
 });

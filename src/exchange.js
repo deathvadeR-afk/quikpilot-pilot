@@ -22,6 +22,10 @@ export function rateFor(currency) {
 }
 
 /** Convert an integer amount in `currency` minor units into base-currency minor units. */
+import { normalizeCurrencyCode, validateCurrencyCode } from "./validation.js";
+
 export function convertToBase(amountMinor, currency = BASE_CURRENCY) {
-  return Math.round(amountMinor * rateFor(currency));
+  const normalizedCurrency = normalizeCurrencyCode(currency);
+  validateCurrencyCode(normalizedCurrency);
+  return Math.round(amountMinor * rateFor(normalizedCurrency));
 }

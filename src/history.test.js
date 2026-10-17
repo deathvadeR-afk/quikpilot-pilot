@@ -64,4 +64,53 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-187-1] Displays correct number of items on first page with more than one page of data", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    expect(result.total).toBe(12);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(true);
+  });
+
+  it("[QP-QUIKSPL-187-2] Displays remaining items on second page without repetition", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const resultPage1 = listExpenses(g, { page: 1, pageSize: 10 });
+    const resultPage2 = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(resultPage2.items.length).toBe(2);
+    expect(resultPage2.total).toBe(12);
+    expect(resultPage2.page).toBe(2);
+    expect(resultPage2.hasMore).toBe(false);
+    const page1Descriptions = resultPage1.items.map(e => e.description);
+    const page2Descriptions = resultPage2.items.map(e => e.description);
+    page2Descriptions.forEach(desc => expect(page1Descriptions).not.toContain(desc));
+  });
+
+  it("[QP-QUIKSPL-187-3] Displays all items on a single page when total items are less than page size", () => {
+    const g = group();
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(3);
+    expect(result.total).toBe(3);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-187-4] Handles exact page size number of items on a page", () => {
+    const g = group();
+    for (let i = 0; i < 7; i++) {
+      addExpense(g, { description: `Exact ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    expect(result.total).toBe(10);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(false);
+  });
 });

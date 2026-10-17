@@ -68,4 +68,48 @@ describe("computeShares", () => {
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
   });
+
+  it("[QP-QUIKSPL-199-1] Splits 10.01 into two 50/50 shares, distributing remainder correctly", () => {
+    const shares = computeShares({
+      amountMinor: 1001,
+      participants: ["a", "b"],
+      splitType: "percent",
+      splitDetails: { a: 50, b: 50 }
+    });
+    expect(shares).toEqual([501, 500]);
+    expect(sum(shares)).toBe(1001);
+  });
+
+  it("[QP-QUIKSPL-199-2] Splits 10.00 into three shares with 33.33/33.33/33.34 percentages", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["a", "b", "c"],
+      splitType: "percent",
+      splitDetails: { a: 33.33, b: 33.33, c: 33.34 }
+    });
+    expect(shares).toEqual([333, 333, 334]);
+    expect(sum(shares)).toBe(1000);
+  });
+
+  it("[QP-QUIKSPL-199-3] Splits 10.00 into two 50/50 shares without alteration", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["a", "b"],
+      splitType: "percent",
+      splitDetails: { a: 50, b: 50 }
+    });
+    expect(shares).toEqual([500, 500]);
+    expect(sum(shares)).toBe(1000);
+  });
+
+  it("[QP-QUIKSPL-199-4] Distributes multiple minor units to largest remainders, earliest first", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["a", "b", "c"],
+      splitType: "percent",
+      splitDetails: { a: 33.33, b: 33.33, c: 33.34 }
+    });
+    expect(shares).toEqual([333, 333, 334]);
+    expect(sum(shares)).toBe(1000);
+  });
 });

@@ -71,6 +71,34 @@ describe("validateExpense currency", () => {
       "Currency must be a 3-letter code.",
     );
   });
+
+  it("[QP-QUIKSPL-42-1] Converts lowercase USD to rupees correctly", () => {
+    const result = validateExpense({ ...base, amount: "100.00", currency: "usd" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+    expect(result.original).toEqual({ amountMinor: 10000, currency: "USD" });
+  });
+
+  it("[QP-QUIKSPL-42-2] Converts uppercase USD to rupees correctly", () => {
+    const result = validateExpense({ ...base, amount: "100.00", currency: "USD" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+    expect(result.original).toEqual({ amountMinor: 10000, currency: "USD" });
+  });
+
+  it("[QP-QUIKSPL-42-3] Converts mixed-case USD to rupees correctly", () => {
+    const result = validateExpense({ ...base, amount: "100.00", currency: "UsD" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+    expect(result.original).toEqual({ amountMinor: 10000, currency: "USD" });
+  });
+
+  it("[QP-QUIKSPL-42-4] Rejects unsupported three-letter currency code", () => {
+    expect(() => validateExpense({ ...base, amount: "50.00", currency: "xyz" }, memberIds())).toThrow(ValidationError);
+    expect(() => validateExpense({ ...base, amount: "50.00", currency: "xyz" }, memberIds())).toThrow("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-42-5] Rejects unsupported three-letter currency code with uppercase message", () => {
+    expect(() => validateExpense({ ...base, amount: "75.00", currency: "abc" }, memberIds())).toThrow(ValidationError);
+    expect(() => validateExpense({ ...base, amount: "75.00", currency: "abc" }, memberIds())).toThrow("Unsupported currency: ABC.");
+  });
 });
 
 describe("validateExpense split", () => {

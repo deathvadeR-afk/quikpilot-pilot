@@ -71,6 +71,28 @@ describe("validateExpense currency", () => {
       "Currency must be a 3-letter code.",
     );
   });
+
+  it("[QP-QUIKSPL-61-1] Converts lowercase USD to INR correctly", () => {
+    const result = validateExpense({ ...base, currency: "usd" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+    expect(result.original).toEqual({ amountMinor: 10000, currency: "USD" });
+  });
+
+  it("[QP-QUIKSPL-61-2] Converts mixed-case USD to INR correctly", () => {
+    const result = validateExpense({ ...base, currency: "UsD" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+    expect(result.original).toEqual({ amountMinor: 10000, currency: "USD" });
+  });
+
+  it("[QP-QUIKSPL-61-3] Rejects unsupported lowercase currency code with correct error message", () => {
+    expect(() => validateExpense({ ...base, currency: "xyz" }, memberIds())).toThrow(ValidationError);
+    expect(() => validateExpense({ ...base, currency: "xyz" }, memberIds())).toThrow("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-61-4] Rejects unsupported uppercase currency code with correct error message", () => {
+    expect(() => validateExpense({ ...base, currency: "XYZ" }, memberIds())).toThrow(ValidationError);
+    expect(() => validateExpense({ ...base, currency: "XYZ" }, memberIds())).toThrow("Unsupported currency: XYZ.");
+  });
 });
 
 describe("validateExpense split", () => {

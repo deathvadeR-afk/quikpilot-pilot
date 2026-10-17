@@ -159,6 +159,37 @@ describe("updateExpense", () => {
     assertBalanced(b);
   });
 
+  it("[QP-QUIKSPL-143-1] Scales shares proportionally when amount is increased", () => {
+    const g = group();
+    addExpense(g, { description: "Exact Split", amountMinor: 1000, paidBy: "u1", participants: ["u1", "u2"], splitType: "exact", splitDetails: { u1: 600, u2: 400 } });
+    updateExpense(g, "exp_1", { amountMinor: 2000 });
+    const updatedExpense = g.expenses[0];
+    expect(updatedExpense.splitDetails.u1).toBe(1200);
+    expect(updatedExpense.splitDetails.u2).toBe(800);
+    assertBalanced(computeBalances(g));
+  });
+
+  it("[QP-QUIKSPL-143-2] Scales shares proportionally when amount is decreased", () => {
+    const g = group();
+    addExpense(g, { description: "Exact Split", amountMinor: 2000, paidBy: "u1", participants: ["u1", "u2"], splitType: "exact", splitDetails: { u1: 1500, u2: 500 } });
+    updateExpense(g, "exp_1", { amountMinor: 1000 });
+    const updatedExpense = g.expenses[0];
+    expect(updatedExpense.splitDetails.u1).toBe(750);
+    expect(updatedExpense.splitDetails.u2).toBe(250);
+    assertBalanced(computeBalances(g));
+  });
+
+  it("[QP-QUIKSPL-143-3] Distributes minor units to largest remainders, earliest first", () => {
+    const g = group();
+    addExpense(g, { description: "Exact Split", amountMinor: 1000, paidBy: "u1", participants: ["u1", "u2", "u3"], splitType: "exact", splitDetails: { u1: 333, u2: 333, u3: 334 } });
+    updateExpense(g, "exp_1", { amountMinor: 1001 });
+    const updatedExpense = g.expenses[0];
+    expect(updatedExpense.splitDetails.u1).toBe(333);
+    expect(updatedExpense.splitDetails.u2).toBe(333);
+    expect(updatedExpense.splitDetails.u3).toBe(335);
+    assertBalanced(computeBalances(g));
+  });
+
   it("refuses to edit a deleted expense or to set a negative amount", () => {
     const g = group();
     addExpense(g, { description: "Dinner", amountMinor: 900, paidBy: "u1", participants: ["u1"] });

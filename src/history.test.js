@@ -64,4 +64,28 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-249-1] filters expenses inclusively when given identical date-only from and to values", () => {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Farewell drinks", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "drinks", createdAt: "2026-10-02T14:00:00.000Z" });
+    addExpense(g, { description: "Lunch", amountMinor: 200, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-02T19:30:00.000Z" });
+    const result = listExpenses(g, { from: "2026-10-02", to: "2026-10-02" });
+    const descriptions = result.items.map((e) => e.description);
+    expect(descriptions).toContain("Farewell drinks");
+    expect(descriptions).toContain("Lunch");
+    expect(result.items.length).toBe(2);
+  });
+
+  it("[QP-QUIKSPL-249-2] preserves exact boundary when to filter contains a full timestamp", () => {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+    ]);
+    addExpense(g, { description: "Early", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "misc", createdAt: "2026-10-02T12:00:00Z" });
+    addExpense(g, { description: "Late", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "misc", createdAt: "2026-10-02T18:00:00Z" });
+    const result = listExpenses(g, { to: "2026-10-02T15:00:00Z" });
+    expect(result.items.map((e) => e.description)).toEqual(["Early"]);
+  });
 });

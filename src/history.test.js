@@ -64,4 +64,52 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-154-1] Displays correct number of items on first page with overflow", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-04T09:00:00.00${i}Z` });
+    }
+    const result = listExpenses(g, { pageSize: 10, page: 1 });
+    expect(result.items.length).toBe(10);
+    expect(new Set(result.items.map(e => e.id)).size).toBe(10);
+  });
+
+  it("[QP-QUIKSPL-154-2] Displays correct number of items on subsequent page with overflow", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-04T09:00:00.00${i}Z` });
+    }
+    const firstPage = listExpenses(g, { pageSize: 10, page: 1 });
+    const secondPage = listExpenses(g, { pageSize: 10, page: 2 });
+    expect(secondPage.items.length).toBe(2);
+    const firstPageIds = new Set(firstPage.items.map(e => e.id));
+    const secondPageIds = new Set(secondPage.items.map(e => e.id));
+    secondPageIds.forEach(id => expect(firstPageIds.has(id)).toBe(false));
+  });
+
+  it("[QP-QUIKSPL-154-3] Displays all items correctly when total is exact multiple of page size", () => {
+    const g = group();
+    for (let i = 0; i < 17; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-04T09:00:00.00${i}Z` });
+    }
+    const firstPage = listExpenses(g, { pageSize: 10, page: 1 });
+    const secondPage = listExpenses(g, { pageSize: 10, page: 2 });
+    const thirdPage = listExpenses(g, { pageSize: 10, page: 3 });
+
+    expect(firstPage.items.length).toBe(10);
+    expect(secondPage.items.length).toBe(10);
+    expect(thirdPage.items.length).toBe(0);
+
+    const allItems = [...firstPage.items, ...secondPage.items];
+    expect(new Set(allItems.map(e => e.id)).size).toBe(20);
+  });
+
+  it("[QP-QUIKSPL-154-4] Handles empty expense list", () => {
+    const g = createGroup("empty", "Empty Group", []);
+    const result = listExpenses(g, { pageSize: 10, page: 1 });
+    expect(result.items.length).toBe(0);
+    expect(result.total).toBe(0);
+    expect(result.hasMore).toBe(false);
+  });
 });

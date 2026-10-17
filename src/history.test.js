@@ -64,4 +64,58 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-271-1] Lists both expenses from the reported day when from and to are the same plain date", () => {
+    const g = createGroup("goa", "Goa trip", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Farewell drinks", amountMinor: 500, paidBy: "u1", participants: ["u1", "u2"], createdAt: "2026-10-02T10:00:00.000Z" });
+    addExpense(g, { description: "Lunch", amountMinor: 800, paidBy: "u2", participants: ["u1", "u2"], createdAt: "2026-10-02T13:00:00.000Z" });
+    const result = listExpenses(g, { from: "2026-10-02", to: "2026-10-02" });
+    expect(result.items.map((e) => e.description).sort()).toEqual(["Farewell drinks", "Lunch"]);
+  });
+
+  it("[QP-QUIKSPL-271-2] Includes an expense created late in the day when the end date is a plain date", () => {
+    const g = createGroup("goa", "Goa trip", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Late dinner", amountMinor: 900, paidBy: "u1", participants: ["u1", "u2"], createdAt: "2026-10-02T23:30:00.000Z" });
+    const result = listExpenses(g, { to: "2026-10-02" });
+    expect(result.items.map((e) => e.description)).toContain("Late dinner");
+  });
+
+  it("[QP-QUIKSPL-271-3] Excludes expenses created on the day after a plain end date", () => {
+    const g = createGroup("goa", "Goa trip", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Early start", amountMinor: 300, paidBy: "u1", participants: ["u1", "u2"], createdAt: "2026-10-03T00:10:00.000Z" });
+    const result = listExpenses(g, { to: "2026-10-02" });
+    expect(result.items.map((e) => e.description)).not.toContain("Early start");
+  });
+
+  it("[QP-QUIKSPL-271-4] Applies a full timestamp end of range exactly as before", () => {
+    const g = createGroup("goa", "Goa trip", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Afternoon walk", amountMinor: 400, paidBy: "u1", participants: ["u1", "u2"], createdAt: "2026-10-02T14:00:00.000Z" });
+    addExpense(g, { description: "Evening walk", amountMinor: 400, paidBy: "u1", participants: ["u1", "u2"], createdAt: "2026-10-02T18:00:00.000Z" });
+    const result = listExpenses(g, { to: "2026-10-02T15:00:00Z" });
+    expect(result.items.map((e) => e.description)).toEqual(["Afternoon walk"]);
+  });
+
+  it("[QP-QUIKSPL-271-5] Uses the same UTC day boundary for a plain end date regardless of user", () => {
+    const g = createGroup("goa", "Goa trip", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Late dinner", amountMinor: 900, paidBy: "u1", participants: ["u1", "u2"], createdAt: "2026-10-02T23:30:00.000Z" });
+    const forFirstUser = listExpenses(g, { to: "2026-10-02" });
+    const forSecondUser = listExpenses(g, { to: "2026-10-02" });
+    expect(forSecondUser.items.map((e) => e.description)).toEqual(forFirstUser.items.map((e) => e.description));
+    expect(forFirstUser.items.map((e) => e.description)).toContain("Late dinner");
+  });
 });

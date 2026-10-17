@@ -64,4 +64,43 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-245-1] limits returned expenses to pageSize on page 1", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 1; i <= 12; i++) {
+      const day = String(i).padStart(2, "0");
+      addExpense(g, {
+        description: `Expense ${i}`,
+        amountMinor: 100,
+        paidBy: "u1",
+        participants: ["u1"],
+        category: "food",
+        createdAt: `2026-10-${day}T09:00:00.000Z`,
+      });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+  });
+
+  it("[QP-QUIKSPL-245-2] prevents boundary expense duplication across consecutive pages", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 1; i <= 12; i++) {
+      const day = String(i).padStart(2, "0");
+      addExpense(g, {
+        description: `Expense ${i}`,
+        amountMinor: 100,
+        paidBy: "u1",
+        participants: ["u1"],
+        category: "food",
+        createdAt: `2026-10-${day}T09:00:00.000Z`,
+      });
+    }
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 });
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(page2.items.length).toBe(2);
+    const page1Ids = new Set(page1.items.map((e) => e.id));
+    for (const item of page2.items) {
+      expect(page1Ids.has(item.id)).toBe(false);
+    }
+  });
 });

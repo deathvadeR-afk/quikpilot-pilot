@@ -65,6 +65,48 @@ describe("computeShares", () => {
     expect(sum(shares)).toBe(1001);
   });
 
+  it("[QP-QUIKSPL-114-1] Scales shares proportionally for a positive amount increase", () => {
+    const oldShares = [600, 400];
+    const newShares = computeShares({
+      amountMinor: 2000,
+      participants: ["a", "b"],
+      splitType: "exact",
+      oldTotalMinor: 1000,
+      oldShares: oldShares,
+    });
+    expect(newShares).toEqual([1200, 800]);
+    expect(sum(newShares)).toBe(2000);
+  });
+
+  it("[QP-QUIKSPL-114-2] Scales shares proportionally for a positive amount decrease", () => {
+    const oldShares = [600, 400];
+    const newShares = computeShares({
+      amountMinor: 500,
+      participants: ["a", "b"],
+      splitType: "exact",
+      oldTotalMinor: 1000,
+      oldShares: oldShares,
+    });
+    expect(newShares).toEqual([300, 200]);
+    expect(sum(newShares)).toBe(500);
+  });
+
+  it("[QP-QUIKSPL-114-3] Distributes minor units correctly with largest remainder, earliest first", () => {
+    const oldShares = [333, 333, 334]; // User C has largest remainder initially
+    const newShares = computeShares({
+      amountMinor: 1100,
+      participants: ["a", "b", "c"],
+      splitType: "exact",
+      oldTotalMinor: 1000,
+      oldShares: oldShares,
+    });
+    // Expected scaled values before remainder distribution: 366.3, 366.3, 367.4
+    // User C (index 2) has largest remainder (0.4), then User A (0.3), then User B (0.3)
+    // With 1 unit to distribute (1100 - (366+366+367) = 1), User C gets it.
+    expect(newShares).toEqual([366, 366, 368]);
+    expect(sum(newShares)).toBe(1100);
+  });
+
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
   });

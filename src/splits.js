@@ -16,6 +16,36 @@ export const SPLIT_TYPES = ["equal", "exact", "percent", "shares"];
  * total. Each part is rounded down, then the units left over are handed out by
  * largest fractional remainder, earliest participant first on a tie.
  */
+/**
+ * Scales existing exact shares proportionally to a new total amount, distributing
+ * any minor unit remainders to ensure the sum is exact. Remainders are distributed
+ * to shares with the largest fractional part, breaking ties by original entry order.
+ */
+export function scaleExactShares(oldTotal, newTotal, shares) {
+  if (oldTotal === 0) return shares.map(() => 0);
+
+  const scalingFactor = newTotal / oldTotal;
+  const scaledShares = shares.map((share) => share * scalingFactor);
+
+  const parts = scaledShares.map((s) => Math.floor(s));
+  const remainders = scaledShares.map((s, i) => ({ i, rem: s % 1 }));
+  let left = newTotal - parts.reduce((a, b) => a + b, 0);
+
+  remainders.sort((a, b) => b.rem - a.rem || a.i - b.i);
+
+  for (const { i } of remainders) {
+    if (left === 0) break;
+    parts[i] += 1;
+    left -= 1;
+  }
+  return parts;
+}
+
+/**
+ * Divide `total` in proportion to `weights` so the parts sum EXACTLY to the
+ * total. Each part is rounded down, then the units left over are handed out by
+ * largest fractional remainder, earliest participant first on a tie.
+ */
 export function weighted(total, weights) {
   const sum = weights.reduce((a, b) => a + b, 0);
   if (weights.length === 0) return [];
@@ -43,6 +73,10 @@ export function computeShares(expense) {
       return splitEvenly(amountMinor, participants.length);
 
     case "exact":
+      // If oldTotalMinor is provided, scale existing shares; otherwise, use provided exact amounts.
+      if (expense.oldTotalMinor !== undefined && expense.oldShares !== undefined) {
+        return scaleExactShares(expense.oldTotalMinor, amountMinor, expense.oldShares);
+      }
       return participants.map((p) => splitDetails[p]);
 
     case "percent":

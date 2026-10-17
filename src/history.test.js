@@ -64,4 +64,84 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-219-1] Displays correct number of items on first page with total items exceeding page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 12; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-01T09:00:${String(i).padStart(2, '0')}Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    const uniqueItems = new Set(result.items.map(item => item.id));
+    expect(uniqueItems.size).toBe(10);
+    expect(result.total).toBe(12);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(true);
+  });
+
+  it("[QP-QUIKSPL-219-2] Displays remaining items on subsequent page without duplication", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 12; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-01T09:00:${String(i).padStart(2, '0')}Z` });
+    }
+    const page1Result = listExpenses(g, { page: 1, pageSize: 10 });
+    const page2Result = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(page2Result.items.length).toBe(2);
+    const uniqueItemsPage2 = new Set(page2Result.items.map(item => item.id));
+    expect(uniqueItemsPage2.size).toBe(2);
+    const page1ItemIds = new Set(page1Result.items.map(item => item.id));
+    page2Result.items.forEach(item => {
+      expect(page1ItemIds.has(item.id)).toBe(false);
+    });
+    expect(page2Result.total).toBe(12);
+    expect(page2Result.page).toBe(2);
+    expect(page2Result.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-219-3] Displays all items on a single page when total items are less than page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 5; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-01T09:00:0${i}Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(5);
+    const uniqueItems = new Set(result.items.map(item => item.id));
+    expect(uniqueItems.size).toBe(5);
+    expect(result.total).toBe(5);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-219-4] Displays correct number of items when total items are an exact multiple of page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 20; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-01T09:00:${String(i).padStart(2, '0')}Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    const uniqueItems = new Set(result.items.map(item => item.id));
+    expect(uniqueItems.size).toBe(10);
+    expect(result.total).toBe(20);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(true);
+  });
+
+  it("[QP-QUIKSPL-219-5] Displays correct number of items on subsequent page when total items are an exact multiple of page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 20; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-01T09:00:${String(i).padStart(2, '0')}Z` });
+    }
+    const page1Result = listExpenses(g, { page: 1, pageSize: 10 });
+    const page2Result = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(page2Result.items.length).toBe(10);
+    const uniqueItemsPage2 = new Set(page2Result.items.map(item => item.id));
+    expect(uniqueItemsPage2.size).toBe(10);
+    const page1ItemIds = new Set(page1Result.items.map(item => item.id));
+    page2Result.items.forEach(item => {
+      expect(page1ItemIds.has(item.id)).toBe(false);
+    });
+    expect(page2Result.total).toBe(20);
+    expect(page2Result.page).toBe(2);
+    expect(page2Result.hasMore).toBe(false);
+  });
 });

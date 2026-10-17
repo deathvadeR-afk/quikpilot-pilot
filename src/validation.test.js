@@ -1,9 +1,42 @@
 import { describe, it, expect } from "vitest";
 import { validateExpense, ValidationError } from "./validation.js";
+import { validateNonNegativeAmount } from "./validation.js";
 
 function memberIds() {
   return ["u1", "u2", "u3"];
 }
+
+describe("validateNonNegativeAmount", () => {
+  it("[QP-QUIKSPL-50-1] Rejects negative manual input in a standard amount field", () => {
+    expect(() => validateNonNegativeAmount(-50)).toThrow(ValidationError);
+    expect(() => validateNonNegativeAmount(-50)).toThrow("amount cannot be negative");
+  });
+
+  it("[QP-QUIKSPL-50-2] Rejects negative input via copy-paste", () => {
+    expect(() => validateNonNegativeAmount("-100.50")).toThrow(ValidationError);
+    expect(() => validateNonNegativeAmount("-100.50")).toThrow("amount cannot be negative");
+  });
+
+  it("[QP-QUIKSPL-50-3] Allows zero as a valid amount", () => {
+    expect(() => validateNonNegativeAmount(0)).not.toThrow();
+    expect(validateNonNegativeAmount(0)).toBe(0);
+  });
+
+  it("[QP-QUIKSPL-50-4] Allows positive amounts", () => {
+    expect(() => validateNonNegativeAmount(123.45)).not.toThrow();
+    expect(validateNonNegativeAmount(123.45)).toBe(123.45);
+  });
+
+  it("rejects non-numeric input", () => {
+    expect(() => validateNonNegativeAmount("abc")).toThrow(ValidationError);
+    expect(() => validateNonNegativeAmount("abc")).toThrow("amount must be a number");
+  });
+
+  it("[QP-QUIKSPL-50-5] Prevents negative amounts from being saved via API", () => {
+    expect(() => validateNonNegativeAmount(-25)).toThrow(ValidationError);
+    expect(() => validateNonNegativeAmount(-25)).toThrow("amount cannot be negative");
+  });
+});
 
 describe("validateExpense participant validation", () => {
   it("[QP-QUIKSPL-31-1] Rejects expense with two identical participant IDs", () => {

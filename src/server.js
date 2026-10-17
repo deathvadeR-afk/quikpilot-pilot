@@ -13,7 +13,7 @@ import {
   settleUp,
   updateExpense,
 } from "./ledger.js";
-import { validateExpense, ValidationError } from "./validation.js";
+import { validateExpense, ValidationError, validateNonNegativeAmount } from "./validation.js";
 import { BASE_CURRENCY, convertToBase } from "./exchange.js";
 import { fromMinor, toMinor } from "./money.js";
 import { listExpenses } from "./history.js";
@@ -111,9 +111,7 @@ export const app = createServer(async (req, res) => {
 
         const memberIds = group.members.map((m) => m.id);
         const expense = validateExpense(body, memberIds);
-        if (expense.amountMinor < 0) {
-          throw new ValidationError("amount", "Negative numbers are not allowed");
-        }
+        validateNonNegativeAmount(expense.original.amountMinor, "amount");
         const created = addExpense(group, expense);
         return json(res, 201, display(created));
       }
@@ -127,8 +125,7 @@ export const app = createServer(async (req, res) => {
         if (body.category !== undefined) changes.category = body.category;
         if (body.amount !== undefined) {
           const existing = group.expenses.find((e) => e.id === base.itemId);
-          const originalMinor = toMinor(body.amount);
-          if (originalMinor === null) throw new ValidationError("amount", "Amount must be a number.");
+          const originalMinor = validateNonNegativeAmount(body.amount, "amount");
           const currency = existing?.original?.currency ?? BASE_CURRENCY;
           changes.amountMinor = convertToBase(originalMinor, currency);
           changes.original = { amountMinor: originalMinor, currency };
@@ -144,8 +141,7 @@ export const app = createServer(async (req, res) => {
       if (base.section === "payments" && !base.itemId && method === "POST") {
         const body = await readBody(req);
         if (body === null) return json(res, 400, { error: "Body must be valid JSON." });
-        const amountMinor = toMinor(body.amount);
-        if (amountMinor === null) throw new ValidationError("amount", "Amount must be a number.");
+        const amountMinor = validateNonNegativeAmount(body.amount, "amount");
         return json(res, 201, recordPayment(group, { from: body.from, to: body.to, amountMinor }));
       }
 

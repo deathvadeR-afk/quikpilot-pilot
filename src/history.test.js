@@ -64,4 +64,81 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-208-1] Displays correct number of unique items on first page with overflow", () => {
+    const g = group();
+    for (let i = 4; i <= 12; i++) {
+      addExpense(g, { description: `Item ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], category: "food", createdAt: `2026-10-${i < 10 ? '0' + i : i}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    expect(new Set(result.items.map(e => e.description)).size).toBe(10);
+    expect(result.total).toBe(12);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(true);
+  });
+
+  it("[QP-QUIKSPL-208-2] Displays remaining unique items on subsequent page with overflow", () => {
+    const g = group();
+    for (let i = 4; i <= 12; i++) {
+      addExpense(g, { description: `Item ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], category: "food", createdAt: `2026-10-${i < 10 ? '0' + i : i}T09:00:00.000Z` });
+    }
+    const firstPageResult = listExpenses(g, { page: 1, pageSize: 10 });
+    const secondPageResult = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(secondPageResult.items.length).toBe(2);
+    expect(new Set(secondPageResult.items.map(e => e.description)).size).toBe(2);
+    const firstPageDescriptions = firstPageResult.items.map(e => e.description);
+    const secondPageDescriptions = secondPageResult.items.map(e => e.description);
+    secondPageDescriptions.forEach(desc => {
+      expect(firstPageDescriptions).not.toContain(desc);
+    });
+    expect(secondPageResult.total).toBe(12);
+    expect(secondPageResult.page).toBe(2);
+    expect(secondPageResult.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-208-3] Displays correct number of unique items when total is exact multiple of page size", () => {
+    const g = group();
+    for (let i = 4; i <= 20; i++) {
+      addExpense(g, { description: `Item ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], category: "food", createdAt: `2026-10-${i < 10 ? '0' + i : i}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    expect(new Set(result.items.map(e => e.description)).size).toBe(10);
+    expect(result.total).toBe(20);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(true);
+  });
+
+  it("[QP-QUIKSPL-208-4] Displays correct number of unique items on second page when total is exact multiple of page size", () => {
+    const g = group();
+    for (let i = 4; i <= 20; i++) {
+      addExpense(g, { description: `Item ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], category: "food", createdAt: `2026-10-${i < 10 ? '0' + i : i}T09:00:00.000Z` });
+    }
+    const firstPageResult = listExpenses(g, { page: 1, pageSize: 10 });
+    const secondPageResult = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(secondPageResult.items.length).toBe(10);
+    expect(new Set(secondPageResult.items.map(e => e.description)).size).toBe(10);
+    const firstPageDescriptions = firstPageResult.items.map(e => e.description);
+    const secondPageDescriptions = secondPageResult.items.map(e => e.description);
+    secondPageDescriptions.forEach(desc => {
+      expect(firstPageDescriptions).not.toContain(desc);
+    });
+    expect(secondPageResult.total).toBe(20);
+    expect(secondPageResult.page).toBe(2);
+    expect(secondPageResult.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-208-5] Displays all items on a single page if total is less than page size", () => {
+    const g = group();
+    // Only 3 items from group() + 2 more = 5 items total
+    addExpense(g, { description: "Item 4", amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], category: "food", createdAt: "2026-10-04T09:00:00.000Z" });
+    addExpense(g, { description: "Item 5", amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], category: "food", createdAt: "2026-10-05T09:00:00.000Z" });
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(5);
+    expect(new Set(result.items.map(e => e.description)).size).toBe(5);
+    expect(result.total).toBe(5);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(false);
+  });
 });

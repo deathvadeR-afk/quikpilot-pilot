@@ -64,4 +64,62 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-189-1] Displays correct number of items on the first page with full page size", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-04T09:00:0${i}Z` });
+    }
+    // Total 3 existing + 9 new = 12 expenses
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    const uniqueItems = new Set(result.items.map(e => e.id));
+    expect(uniqueItems.size).toBe(10);
+  });
+
+  it("[QP-QUIKSPL-189-2] Displays correct number of items on the second page with remaining items", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-04T09:00:0${i}Z` });
+    }
+    // Total 3 existing + 9 new = 12 expenses
+    const result = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(result.items.length).toBe(2);
+    const uniqueItems = new Set(result.items.map(e => e.id));
+    expect(uniqueItems.size).toBe(2);
+  });
+
+  it("[QP-QUIKSPL-189-3] Ensures no expense items are repeated across pages", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-04T09:00:0${i}Z` });
+    }
+    // Total 3 existing + 9 new = 12 expenses
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 });
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 });
+    const page1Ids = new Set(page1.items.map(e => e.id));
+    const page2Ids = new Set(page2.items.map(e => e.id));
+    page2Ids.forEach(id => expect(page1Ids.has(id)).toBe(false));
+  });
+
+  it("[QP-QUIKSPL-189-4] Displays a single page correctly when total items are less than page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    addExpense(g, { description: "Item 1", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-01T09:00:00.000Z" });
+    addExpense(g, { description: "Item 2", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-02T09:00:00.000Z" });
+    addExpense(g, { description: "Item 3", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-03T09:00:00.000Z" });
+    addExpense(g, { description: "Item 4", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-04T09:00:00.000Z" });
+    addExpense(g, { description: "Item 5", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-05T09:00:00.000Z" });
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(5);
+    expect(result.total).toBe(5);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-189-5] Displays an empty page when no expense items exist", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(0);
+    expect(result.total).toBe(0);
+    expect(result.hasMore).toBe(false);
+  });
 });

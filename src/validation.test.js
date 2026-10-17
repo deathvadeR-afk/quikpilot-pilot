@@ -71,6 +71,30 @@ describe("validateExpense currency", () => {
       "Currency must be a 3-letter code.",
     );
   });
+
+  it("[QP-QUIKSPL-77-1] Converts lowercase USD to rupees correctly", () => {
+    const result = validateExpense({ ...base, currency: "usd" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+    expect(result.original).toEqual({ amountMinor: 10000, currency: "USD" });
+  });
+
+  it("[QP-QUIKSPL-77-2] Converts mixed-case EUR to rupees correctly", () => {
+    const result = validateExpense({ ...base, currency: "EuR" }, memberIds());
+    expect(result.amountMinor).toBe(905000);
+    expect(result.original).toEqual({ amountMinor: 10000, currency: "EUR" });
+  });
+
+  it("[QP-QUIKSPL-77-3] Rejects unsupported currency code 'XYZ' with correct error message", () => {
+    expect(() => validateExpense({ ...base, currency: "XYZ" }, memberIds())).toThrow(
+      "Unsupported currency: XYZ.",
+    );
+  });
+
+  it("[QP-QUIKSPL-77-4] Rejects unsupported currency code 'xyz' with correct uppercase error message", () => {
+    expect(() => validateExpense({ ...base, currency: "xyz" }, memberIds())).toThrow(
+      "Unsupported currency: XYZ.",
+    );
+  });
 });
 
 describe("validateExpense split", () => {

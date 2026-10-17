@@ -166,6 +166,34 @@ describe("updateExpense", () => {
     deleteExpense(g, "exp_1");
     expect(() => updateExpense(g, "exp_1", { description: "x" })).toThrow("deleted expense cannot be edited");
   });
+
+  it("[QP-QUIKSPL-150-1] Scales shares proportionally when expense amount increases", () => {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 1000, paidBy: "u1", participants: ["u1", "u2"], splitType: "exact", splitDetails: { u1: 600, u2: 400 } });
+    const updated = updateExpense(g, "exp_1", { amountMinor: 2000 });
+    expect(updated.splitDetails.u1).toBe(1200);
+    expect(updated.splitDetails.u2).toBe(800);
+    expect(updated.splitDetails.u1 + updated.splitDetails.u2).toBe(2000);
+  });
+
+  it("[QP-QUIKSPL-150-2] Scales shares proportionally when expense amount decreases", () => {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 2000, paidBy: "u1", participants: ["u1", "u2"], splitType: "exact", splitDetails: { u1: 1200, u2: 800 } });
+    const updated = updateExpense(g, "exp_1", { amountMinor: 1000 });
+    expect(updated.splitDetails.u1).toBe(600);
+    expect(updated.splitDetails.u2).toBe(400);
+    expect(updated.splitDetails.u1 + updated.splitDetails.u2).toBe(1000);
+  });
+
+  it("[QP-QUIKSPL-150-3] Distributes minor units correctly with largest remainder, earliest first", () => {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 1000, paidBy: "u1", participants: ["u1", "u2", "u3"], splitType: "exact", splitDetails: { u1: 333, u2: 333, u3: 334 } });
+    const updated = updateExpense(g, "exp_1", { amountMinor: 1100 });
+    expect(updated.splitDetails.u1).toBe(366);
+    expect(updated.splitDetails.u2).toBe(366);
+    expect(updated.splitDetails.u3).toBe(368);
+    expect(updated.splitDetails.u1 + updated.splitDetails.u2 + updated.splitDetails.u3).toBe(1100);
+  });
 });
 
 describe("members", () => {

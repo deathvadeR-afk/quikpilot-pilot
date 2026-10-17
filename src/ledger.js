@@ -51,12 +51,71 @@ export function updateExpense(group, id, changes) {
   if (changes.description !== undefined) expense.description = validateDescription(changes.description);
   if (changes.category !== undefined) expense.category = validateCategory(changes.category);
   if (changes.amountMinor !== undefined) {
+    const oldAmountMinor = expense.amountMinor;
     expense.amountMinor = changes.amountMinor;
     if (changes.original) expense.original = changes.original;
+    // Recompute shares for 'equal' split type when amount changes
+    if (expense.splitType === "equal") {
+      expense.splitDetails = computeShares(expense);
+    } else if (expense.splitType === "exact" && oldAmountMinor !== changes.amountMinor) {
+      expense.splitDetails = scaleExactShares(
+        expense.splitDetails,
+        oldAmountMinor,
+        changes.amountMinor,
+        expense.participants,
+      );
+    }
   }
 
   expense.updatedAt = new Date().toISOString();
   return expense;
+}
+
+/**
+ * Scales the shares of an 'exact' split expense proportionally to a new total amount.
+ * Distributes any leftover minor units using the largest remainder, earliest participant first rule.
+ */
+function scaleExactShares(originalSplitDetails, oldTotal, newTotal, participants) {
+  if (oldTotal === 0) {
+    // If the original total was zero, distribute the new total evenly
+    const share = Math.floor(newTotal / participants.length);
+    let remainder = newTotal % participants.length;
+    const newSplitDetails = {};
+    for (let i = 0; i < participants.length; i++) {
+      newSplitDetails[participants[i]] = share + (remainder > 0 ? 1 : 0);
+      if (remainder > 0) remainder--;
+    }
+    return newSplitDetails;
+  }
+
+  const scalingFactor = newTotal / oldTotal;
+  const scaledShares = participants.map((p) => originalSplitDetails[p] * scalingFactor);
+
+  const newSplitDetails = {};
+  let allocatedTotal = 0;
+  const remainders = [];
+
+  for (let i = 0; i < participants.length; i++) {
+    const participantId = participants[i];
+    const scaledShare = scaledShares[i];
+    const floorShare = Math.floor(scaledShare);
+    newSplitDetails[participantId] = floorShare;
+    allocatedTotal += floorShare;
+    remainders.push({ id: participantId, remainder: scaledShare - floorShare, originalIndex: i });
+  }
+
+  let leftover = newTotal - allocatedTotal;
+
+  // Distribute leftover units by largest remainder, earliest participant first
+  remainders.sort((a, b) => b.remainder - a.remainder || a.originalIndex - b.originalIndex);
+
+  for (const { id } of remainders) {
+    if (leftover === 0) break;
+    newSplitDetails[id] += 1;
+    leftover -= 1;
+  }
+
+  return newSplitDetails;
 }
 
 export function deleteExpense(group, id) {

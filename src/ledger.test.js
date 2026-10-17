@@ -195,3 +195,42 @@ describe("members", () => {
     expect(() => removeMember(group(), "zz")).toThrow("not in this group");
   });
 });
+
+describe("updateExpense on exact splits", () => {
+  it("[QP-QUIKSPL-269-1] Scales two shares proportionally when the amount is doubled", () => {
+    const g = group();
+    addExpense(g, { description: "Split", amountMinor: 1000, paidBy: "u1", participants: ["u1", "u2"], splitType: "exact", splitDetails: { u1: 600, u2: 400 } });
+    updateExpense(g, "exp_1", { amountMinor: 2000 });
+    const shares = g.expenses[0].splitDetails;
+    expect(shares.u1).toBe(1200);
+    expect(shares.u2).toBe(800);
+    expect(shares.u1 + shares.u2).toBe(2000);
+  });
+
+  it("[QP-QUIKSPL-269-2] Assigns leftover minor units to largest remainders with earliest share winning ties", () => {
+    const g = group();
+    addExpense(g, { description: "Split", amountMinor: 5, paidBy: "u1", participants: ["u1", "u2", "u3"], splitType: "exact", splitDetails: { u1: 2, u2: 2, u3: 1 } });
+    updateExpense(g, "exp_1", { amountMinor: 6 });
+    const shares = g.expenses[0].splitDetails;
+    expect(shares.u1 + shares.u2 + shares.u3).toBe(6);
+    expect(shares.u1).toBe(3);
+    expect(shares.u2).toBe(2);
+    expect(shares.u3).toBe(1);
+  });
+
+  it("[QP-QUIKSPL-269-3] Group balances net to zero after an exact-split amount edit", () => {
+    const g = group();
+    addExpense(g, { description: "Split", amountMinor: 1000, paidBy: "u1", participants: ["u1", "u2"], splitType: "exact", splitDetails: { u1: 600, u2: 400 } });
+    updateExpense(g, "exp_1", { amountMinor: 2000 });
+    const balances = computeBalances(g);
+    const total = Object.values(balances).reduce((a, b) => a + b, 0);
+    expect(total).toBe(0);
+  });
+
+  it("[QP-QUIKSPL-269-4] Rejects an amount edit when the original shares total zero", () => {
+    const g = group();
+    addExpense(g, { description: "Split", amountMinor: 0, paidBy: "u1", participants: ["u1", "u2"], splitType: "exact", splitDetails: { u1: 0, u2: 0 } });
+    expect(() => updateExpense(g, "exp_1", { amountMinor: 1000 })).toThrow(ValidationError);
+    expect(() => updateExpense(g, "exp_1", { amountMinor: 1000 })).toThrow("re-enter the split manually");
+  });
+});

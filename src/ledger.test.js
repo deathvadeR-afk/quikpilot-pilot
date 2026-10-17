@@ -194,4 +194,35 @@ describe("members", () => {
   it("will not remove someone who is not in the group", () => {
     expect(() => removeMember(group(), "zz")).toThrow("not in this group");
   });
+
+  it("[QP-QUIKSPL-272-1] Refuses removal of a zero-balance member who appears in an active expense", () => {
+    const g = group();
+    addExpense(g, { description: "New ball", amountMinor: 450, paidBy: "u3", participants: ["u3"] });
+    let error;
+    try {
+      removeMember(g, "u3");
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(ValidationError);
+    expect(error.field).toBe("memberId");
+    expect(error.message).toBe("That member appears in expenses and cannot be removed.");
+    expect(computeBalances(g).u3).not.toBeNull();
+  });
+
+  it("[QP-QUIKSPL-272-2] Leaves group balances intact after a refused removal", () => {
+    const g = group();
+    addExpense(g, { description: "New ball", amountMinor: 450, paidBy: "u3", participants: ["u3"] });
+    expect(() => removeMember(g, "u3")).toThrow(ValidationError);
+    expect(g.members.map((m) => m.id)).toContain("u3");
+    const balances = computeBalances(g);
+    expect(Object.values(balances).every((v) => typeof v === "number")).toBe(true);
+  });
+
+  it("[QP-QUIKSPL-272-3] Removes a member with no active expense and no balance", () => {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 600, paidBy: "u1", participants: ["u1", "u2"] });
+    removeMember(g, "u3");
+    expect(g.members.map((m) => m.id)).toEqual(["u1", "u2"]);
+  });
 });

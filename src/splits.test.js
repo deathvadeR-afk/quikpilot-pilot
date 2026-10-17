@@ -68,4 +68,64 @@ describe("computeShares", () => {
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
   });
+
+  it("[QP-QUIKSPL-223-1] Splits 10.01 into 50/50 correctly", () => {
+    const participants = ["a", "b"];
+    const shares = computeShares({
+      amountMinor: 1001,
+      participants,
+      splitType: "percent",
+      splitDetails: { a: 50, b: 50 },
+    });
+    expect(shares).toEqual([500, 501]);
+    expect(sum(shares)).toBe(1001);
+  });
+
+  it("[QP-QUIKSPL-223-2] Splits 10.00 into 33.33/33.33/33.34 correctly", () => {
+    const participants = ["a", "b", "c"];
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants,
+      splitType: "percent",
+      splitDetails: { a: 33.33, b: 33.33, c: 33.34 },
+    });
+    expect(shares).toEqual([333, 333, 334]);
+    expect(sum(shares)).toBe(1000);
+  });
+
+  it("[QP-QUIKSPL-223-3] Distributes remainder to earliest participant with largest remainder", () => {
+    const participants = ["a", "b", "c"];
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants,
+      splitType: "percent",
+      splitDetails: { a: 33, b: 33, c: 34 },
+    });
+    expect(shares).toEqual([330, 330, 340]);
+    expect(sum(shares)).toBe(1000);
+  });
+
+  it("[QP-QUIKSPL-223-4] Handles clean 50/50 split without changes", () => {
+    const participants = ["a", "b"];
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants,
+      splitType: "percent",
+      splitDetails: { a: 50, b: 50 },
+    });
+    expect(shares).toEqual([500, 500]);
+    expect(sum(shares)).toBe(1000);
+  });
+
+  it("[QP-QUIKSPL-223-5] Handles expense with three decimal places precision", () => {
+    const participants = ["a", "b"];
+    const shares = computeShares({
+      amountMinor: 10001,
+      participants,
+      splitType: "percent",
+      splitDetails: { a: 50, b: 50 },
+    });
+    expect(shares).toEqual([5000, 5001]);
+    expect(sum(shares)).toBe(10001);
+  });
 });

@@ -64,4 +64,54 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-239-1] Filters expenses correctly when 'to' date is inclusive of the entire day", () => {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+    ]);
+    const add = (description, createdAt) =>
+      addExpense(g, { description, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt });
+
+    add("Expense on 2026-10-02 10:00", "2026-10-02T10:00:00.000Z");
+    add("Expense on 2026-10-02 14:00", "2026-10-02T14:00:00.000Z");
+    add("Expense on 2026-10-03 09:00", "2026-10-03T09:00:00.000Z");
+
+    const result = listExpenses(g, { from: "2026-10-02", to: "2026-10-02" });
+    expect(result.items.map((e) => e.description)).toEqual([
+      "Expense on 2026-10-02 14:00",
+      "Expense on 2026-10-02 10:00",
+    ]);
+    expect(result.total).toBe(2);
+  });
+
+  it("[QP-QUIKSPL-239-2] Excludes expenses created on the day after the 'to' date", () => {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+    ]);
+    const add = (description, createdAt) =>
+      addExpense(g, { description, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt });
+
+    add("Expense on 2026-10-03 00:00:00.001", "2026-10-03T00:00:00.001Z");
+
+    const result = listExpenses(g, { from: "2026-10-01", to: "2026-10-02" });
+    expect(result.items).toEqual([]);
+    expect(result.total).toBe(0);
+  });
+
+  it("[QP-QUIKSPL-239-3] Maintains existing behavior for full timestamp 'to' filters", () => {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+    ]);
+    const add = (description, createdAt) =>
+      addExpense(g, { description, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt });
+
+    add("Expense on 2026-10-02 10:00", "2026-10-02T10:00:00.000Z");
+    add("Expense on 2026-10-02 14:00", "2026-10-02T14:00:00.000Z");
+
+    const result = listExpenses(g, { from: "2026-10-02T00:00:00.000Z", to: "2026-10-02T12:00:00.000Z" });
+    expect(result.items.map((e) => e.description)).toEqual([
+      "Expense on 2026-10-02 10:00",
+    ]);
+    expect(result.total).toBe(1);
+  });
 });

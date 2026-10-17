@@ -64,4 +64,30 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-221-1] Includes expenses from the entire end date when a plain date is used", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    addExpense(g, { description: "Morning", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-02T10:00:00.000Z" });
+    addExpense(g, { description: "Afternoon", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-02T15:00:00.000Z" });
+    const result = listExpenses(g, { to: "2026-10-02" });
+    expect(result.items.map((e) => e.description)).toEqual(["Afternoon", "Morning"]);
+  });
+
+  it("[QP-QUIKSPL-221-2] Excludes expenses beyond the specified time when a full timestamp is used", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    addExpense(g, { description: "Morning", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-02T10:00:00.000Z" });
+    addExpense(g, { description: "Afternoon", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-02T15:00:00.000Z" });
+    const result = listExpenses(g, { to: "2026-10-02T12:00:00Z" });
+    expect(result.items.map((e) => e.description)).toEqual(["Morning"]);
+  });
+
+  it("[QP-QUIKSPL-221-3] Correctly filters with a plain date range including the start and end day", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    addExpense(g, { description: "Day 1", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-01T10:00:00.000Z" });
+    addExpense(g, { description: "Day 2 Morning", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-02T10:00:00.000Z" });
+    addExpense(g, { description: "Day 2 Afternoon", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-02T15:00:00.000Z" });
+    addExpense(g, { description: "Day 3", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-03T10:00:00.000Z" });
+    const result = listExpenses(g, { from: "2026-10-02", to: "2026-10-02" });
+    expect(result.items.map((e) => e.description)).toEqual(["Day 2 Afternoon", "Day 2 Morning"]);
+  });
 });

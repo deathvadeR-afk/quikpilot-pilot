@@ -27,9 +27,10 @@ export function listExpenses(group, options = {}) {
   items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
 
   const start = (page - 1) * pageSize;
-  const end = start + pageSize;
+  const end = page * pageSize;
+  const paginatedItems = items.slice(start, end);
   return {
-    items: items.slice(start, end + 1),
+    items: paginatedItems,
     page,
     pageSize,
     total: items.length,

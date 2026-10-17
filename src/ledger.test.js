@@ -195,3 +195,109 @@ describe("members", () => {
     expect(() => removeMember(group(), "zz")).toThrow("not in this group");
   });
 });
+
+describe("updateExpense exact-split amount rescaling", () => {
+  function exactGroup() {
+    const g = group();
+    addExpense(g, {
+      description: "Dinner",
+      amountMinor: 1000,
+      paidBy: "u1",
+      participants: ["u1", "u2"],
+      splitType: "exact",
+      splitDetails: { u1: 600, u2: 400 },
+    });
+    return g;
+  }
+
+  it("[QP-QUIKSPL-259-1] scales both shares when 10.00 split 6.00/4.00 is edited to 20.00", () => {
+    const g = exactGroup();
+    const updated = updateExpense(g, "exp_1", { amountMinor: 2000 });
+    expect(updated.splitDetails).toEqual({ u1: 1200, u2: 800 });
+    expect(updated.splitDetails.u1 + updated.splitDetails.u2).toBe(2000);
+  });
+
+  it("[QP-QUIKSPL-259-2] scales both shares when 10.00 split 6.00/4.00 is edited down to 5.00", () => {
+    const g = exactGroup();
+    const updated = updateExpense(g, "exp_1", { amountMinor: 500 });
+    expect(updated.splitDetails).toEqual({ u1: 300, u2: 200 });
+    expect(updated.splitDetails.u1 + updated.splitDetails.u2).toBe(500);
+  });
+
+  it("[QP-QUIKSPL-259-3] gives the leftover minor unit to the earliest of two tied largest remainders", () => {
+    const g = group();
+    addExpense(g, {
+      description: "Dinner",
+      amountMinor: 1000,
+      paidBy: "u1",
+      participants: ["u1", "u2", "u3"],
+      splitType: "exact",
+      splitDetails: { u1: 333, u2: 333, u3: 334 },
+    });
+    const updated = updateExpense(g, "exp_1", { amountMinor: 500 });
+    expect(updated.splitDetails).toEqual({ u1: 167, u2: 166, u3: 167 });
+    expect(updated.splitDetails.u1 + updated.splitDetails.u2 + updated.splitDetails.u3).toBe(500);
+  });
+
+  it("[QP-QUIKSPL-259-4] gives the leftover minor unit to the single largest remainder", () => {
+    const g = group();
+    addExpense(g, {
+      description: "Dinner",
+      amountMinor: 1000,
+      paidBy: "u1",
+      participants: ["u1", "u2", "u3"],
+      splitType: "exact",
+      splitDetails: { u1: 500, u2: 300, u3: 200 },
+    });
+    const updated = updateExpense(g, "exp_1", { amountMinor: 101 });
+    expect(updated.splitDetails).toEqual({ u1: 51, u2: 30, u3: 20 });
+    expect(updated.splitDetails.u1 + updated.splitDetails.u2 + updated.splitDetails.u3).toBe(101);
+  });
+
+  it("[QP-QUIKSPL-259-5] keeps the group's balances summing to zero after the amount is edited", () => {
+    const g = group();
+    addExpense(g, {
+      description: "Dinner",
+      amountMinor: 1000,
+      paidBy: "u1",
+      participants: ["u1", "u2", "u3"],
+      splitType: "exact",
+      splitDetails: { u1: 333, u2: 333, u3: 334 },
+    });
+    updateExpense(g, "exp_1", { amountMinor: 500 });
+    const b = computeBalances(g);
+    expect(b.u1).toBe(500 - 167);
+    expect(b.u2).toBe(-166);
+    expect(b.u3).toBe(-167);
+    assertBalanced(b);
+  });
+
+  it("[QP-QUIKSPL-259-6] rejects a negative amount and leaves the amount and shares untouched", () => {
+    const g = exactGroup();
+    expect(() => updateExpense(g, "exp_1", { amountMinor: -500 })).toThrow(ValidationError);
+    expect(g.expenses[0].amountMinor).toBe(1000);
+    expect(g.expenses[0].splitDetails).toEqual({ u1: 600, u2: 400 });
+  });
+
+  it("[QP-QUIKSPL-259-7] rejects a zero amount and leaves the amount and shares untouched", () => {
+    const g = exactGroup();
+    expect(() => updateExpense(g, "exp_1", { amountMinor: 0 })).toThrow(ValidationError);
+    expect(g.expenses[0].amountMinor).toBe(1000);
+    expect(g.expenses[0].splitDetails).toEqual({ u1: 600, u2: 400 });
+  });
+
+  it("[QP-QUIKSPL-259-8] rejects a non-numeric amount and leaves the amount and shares untouched", () => {
+    const g = exactGroup();
+    expect(() => updateExpense(g, "exp_1", { amountMinor: "twenty" })).toThrow(ValidationError);
+    expect(g.expenses[0].amountMinor).toBe(1000);
+    expect(g.expenses[0].splitDetails).toEqual({ u1: 600, u2: 400 });
+  });
+
+  it("[QP-QUIKSPL-259-9] refuses an amount edit from a user without edit permission on the expense", () => {
+    const g = exactGroup();
+    // "u2" is a member of the group but is not the payer of this expense, so is not permitted to edit it.
+    expect(() => updateExpense(g, "exp_1", { amountMinor: 2000 }, "u2")).toThrow(ValidationError);
+    expect(g.expenses[0].amountMinor).toBe(1000);
+    expect(g.expenses[0].splitDetails).toEqual({ u1: 600, u2: 400 });
+  });
+});

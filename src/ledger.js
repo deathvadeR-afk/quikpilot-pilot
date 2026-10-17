@@ -1,4 +1,4 @@
-import { computeShares } from "./splits.js";
+import { computeShares, weighted } from "./splits.js";
 import { ValidationError, validateCategory, validateDescription } from "./validation.js";
 
 /**
@@ -38,21 +38,40 @@ function findExpense(group, id) {
   return expense;
 }
 
-/** Edit an expense's description, category or amount. Participants and the split are fixed once created. */
-export function updateExpense(group, id, changes) {
+/**
+ * Edit an expense's description, category or amount. Participants are fixed
+ * once created; an exact split is rescaled in proportion to the new amount.
+ * `actorId`, when given, must be the expense's payer.
+ */
+export function updateExpense(group, id, changes, actorId) {
   const expense = findExpense(group, id);
   if (!isActive(expense)) {
     throw new ValidationError("id", "A deleted expense cannot be edited.");
   }
 
-  if (changes.amountMinor !== undefined && changes.amountMinor < 0) {
-    throw new ValidationError("amount", "Negative numbers are not allowed");
+  if (changes.amountMinor !== undefined) {
+    if (typeof changes.amountMinor !== "number" || !Number.isFinite(changes.amountMinor)) {
+      throw new ValidationError("amount", "Amount must be a number.");
+    }
+    if (changes.amountMinor <= 0) {
+      throw new ValidationError("amount", "Amount must be greater than zero.");
+    }
   }
+
+  if (actorId !== undefined && actorId !== expense.paidBy) {
+    throw new ValidationError("actor", "You do not have permission to edit this expense.");
+  }
+
   if (changes.description !== undefined) expense.description = validateDescription(changes.description);
   if (changes.category !== undefined) expense.category = validateCategory(changes.category);
   if (changes.amountMinor !== undefined) {
     expense.amountMinor = changes.amountMinor;
     if (changes.original) expense.original = changes.original;
+    if (expense.splitType === "exact" && expense.splitDetails) {
+      const weights = expense.participants.map((p) => expense.splitDetails[p]);
+      const rescaled = weighted(expense.amountMinor, weights);
+      expense.splitDetails = Object.fromEntries(expense.participants.map((p, i) => [p, rescaled[i]]));
+    }
   }
 
   expense.updatedAt = new Date().toISOString();

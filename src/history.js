@@ -27,12 +27,12 @@ export function listExpenses(group, options = {}) {
   items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
 
   const start = (page - 1) * pageSize;
-  const end = start + pageSize;
+  const end = Math.min(start + pageSize, items.length);
   return {
-    items: items.slice(start, end + 1),
+    items: items.slice(start, end),
     page,
     pageSize,
     total: items.length,
-    hasMore: end < items.length,
+    hasMore: start + pageSize < items.length
   };
 }

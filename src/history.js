@@ -26,13 +26,14 @@ export function listExpenses(group, options = {}) {
 
   items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
 
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
+  const offset = (page - 1) * pageSize;
+  const limit = pageSize;
+  const paginatedItems = items.slice(offset, offset + limit);
   return {
-    items: items.slice(start, end + 1),
+    items: paginatedItems,
     page,
     pageSize,
     total: items.length,
-    hasMore: end < items.length,
+    hasMore: offset + limit < items.length,
   };
 }

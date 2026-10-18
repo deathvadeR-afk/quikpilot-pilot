@@ -71,6 +71,58 @@ describe("validateExpense currency", () => {
       "Currency must be a 3-letter code.",
     );
   });
+
+  it("[QP-QUIKSPL-282-1] Converts a lowercase currency code the same as its uppercase form", () => {
+    const result = validateExpense({ ...base, currency: "usd" }, memberIds());
+    expect(result.original.currency).toBe("USD");
+    expect(result.amountMinor).toBe(832000);
+  });
+
+  it("[QP-QUIKSPL-282-2] Accepts a mixed-case currency code and stores it in uppercase", () => {
+    const result = validateExpense({ ...base, currency: "Usd" }, memberIds());
+    expect(result.original.currency).toBe("USD");
+    expect(result.amountMinor).toBe(832000);
+  });
+
+  it("[QP-QUIKSPL-282-3] Rejects an unsupported three-letter currency code with a ValidationError", () => {
+    let caught;
+    try {
+      validateExpense({ ...base, currency: "XYZ" }, memberIds());
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(ValidationError);
+    expect(caught.field).toBe("currency");
+  });
+
+  it("[QP-QUIKSPL-282-4] Reports the unsupported code in capitals in the error message", () => {
+    let caught;
+    try {
+      validateExpense({ ...base, currency: "xyz" }, memberIds());
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(ValidationError);
+    expect(caught.message).toBe("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-282-5] Creates no expense record when the currency is rejected", () => {
+    let result;
+    let caught;
+    try {
+      result = validateExpense({ ...base, currency: "XYZ" }, memberIds());
+    } catch (e) {
+      caught = e;
+    }
+    expect(result).toBeUndefined();
+    expect(caught).toBeInstanceOf(ValidationError);
+  });
+
+  it("[QP-QUIKSPL-282-6] Trims surrounding whitespace from a currency code before converting", () => {
+    const result = validateExpense({ ...base, currency: " usd " }, memberIds());
+    expect(result.original.currency).toBe("USD");
+    expect(result.amountMinor).toBe(832000);
+  });
 });
 
 describe("validateExpense split", () => {

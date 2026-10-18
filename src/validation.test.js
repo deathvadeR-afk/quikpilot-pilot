@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { validateExpense, ValidationError } from "./validation.js";
+import { createGroup, addExpense } from "./ledger.js";
 
 function memberIds() {
   return ["u1", "u2", "u3"];
@@ -70,6 +71,51 @@ describe("validateExpense currency", () => {
     expect(() => validateExpense({ ...base, currency: "US" }, memberIds())).toThrow(
       "Currency must be a 3-letter code.",
     );
+  });
+
+  it("[QP-QUIKSPL-287-1] Converts a lowercase USD expense the same as an uppercase one", () => {
+    const upper = validateExpense({ ...base, currency: "USD" }, memberIds());
+    const lower = validateExpense({ ...base, currency: "usd" }, memberIds());
+    expect(lower.amountMinor).toBe(832000);
+    expect(lower.amountMinor).toBe(upper.amountMinor);
+  });
+
+  it("[QP-QUIKSPL-287-2] Accepts a mixed-case currency code and normalises it to uppercase", () => {
+    const result = validateExpense({ ...base, currency: "Usd" }, memberIds());
+    expect(result.original.currency).toBe("USD");
+  });
+
+  it("[QP-QUIKSPL-287-3] Rejects an unsupported currency code with a ValidationError on the currency field", () => {
+    let caught;
+    try {
+      validateExpense({ ...base, currency: "XYZ" }, memberIds());
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(ValidationError);
+    expect(caught.field).toBe("currency");
+    expect(caught.message).toContain("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-287-4] Saves nothing when the currency is unsupported", () => {
+    const group = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    expect(() => addExpense(group, validateExpense({ ...base, currency: "XYZ" }, memberIds()))).toThrow(ValidationError);
+    expect(group.expenses).toHaveLength(0);
+  });
+
+  it("[QP-QUIKSPL-287-5] Shows the uppercase code in the error for a lowercase unsupported currency", () => {
+    let caught;
+    try {
+      validateExpense({ ...base, currency: "xyz" }, memberIds());
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(ValidationError);
+    expect(caught.field).toBe("currency");
+    expect(caught.message).toContain("Unsupported currency: XYZ.");
   });
 });
 

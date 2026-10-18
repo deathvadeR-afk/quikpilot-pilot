@@ -65,3 +65,51 @@ describe("listExpenses", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
 });
+
+function pagedGroup() {
+  const g = createGroup("g", "Paged", [
+    { id: "u1", name: "A" },
+    { id: "u2", name: "B" },
+  ]);
+  for (let i = 1; i <= 12; i++) {
+    addExpense(g, {
+      description: `Expense ${i}`,
+      amountMinor: 100,
+      paidBy: "u1",
+      participants: ["u1", "u2"],
+      category: "food",
+      createdAt: `2026-10-${String(i).padStart(2, "0")}T09:00:00.000Z`,
+    });
+  }
+  return g;
+}
+
+describe("listExpenses paging", () => {
+  it("[QP-QUIKSPL-280-1] Page 1 shows exactly 10 expenses when 12 exist and page size is 10", () => {
+    const result = listExpenses(pagedGroup(), { page: 1, pageSize: 10 });
+    expect(result.items).toHaveLength(10);
+  });
+
+  it("[QP-QUIKSPL-280-2] Page 2 shows the remaining 2 expenses without repeating page 1 items", () => {
+    const g = pagedGroup();
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 }).items.map((e) => e.id);
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 }).items.map((e) => e.id);
+    expect(page2).toHaveLength(2);
+    expect(page2.some((id) => page1.includes(id))).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-280-3] No page exceeds the configured page size", () => {
+    const g = pagedGroup();
+    for (const page of [1, 2]) {
+      const result = listExpenses(g, { page, pageSize: 10 });
+      expect(result.items.length).toBeLessThanOrEqual(10);
+    }
+  });
+
+  it("[QP-QUIKSPL-280-4] Paging through the list shows each expense exactly once", () => {
+    const g = pagedGroup();
+    const shown = [1, 2].flatMap((page) => listExpenses(g, { page, pageSize: 10 }).items.map((e) => e.description));
+    expect(shown).toHaveLength(12);
+    expect(new Set(shown).size).toBe(12);
+  });
+});

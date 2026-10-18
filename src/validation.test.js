@@ -71,6 +71,53 @@ describe("validateExpense currency", () => {
       "Currency must be a 3-letter code.",
     );
   });
+
+  it("[QP-QUIKSPL-285-1] Converts a lowercase currency code the same as its uppercase form", () => {
+    const upper = validateExpense({ ...base, currency: "USD" }, memberIds());
+    const lower = validateExpense({ ...base, currency: "usd" }, memberIds());
+    expect(lower.amountMinor).toBe(832000);
+    expect(lower.amountMinor).toBe(upper.amountMinor);
+  });
+
+  it("[QP-QUIKSPL-285-2] Accepts mixed-case currency codes and converts them identically", () => {
+    const result = validateExpense({ ...base, currency: "Usd" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+  });
+
+  it("[QP-QUIKSPL-285-3] Rejects an unsupported three-letter currency code with a ValidationError", () => {
+    let caught;
+    try {
+      validateExpense({ ...base, currency: "XYZ" }, memberIds());
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(ValidationError);
+    expect(caught.field).toBe("currency");
+    expect(caught.message).toBe("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-285-4] Creates no expense when the currency is unsupported", () => {
+    let result;
+    let threw = false;
+    try {
+      result = validateExpense({ ...base, currency: "XYZ" }, memberIds());
+    } catch (e) {
+      threw = true;
+    }
+    expect(threw).toBe(true);
+    expect(result).toBeUndefined();
+  });
+
+  it("[QP-QUIKSPL-285-5] Shows an unsupported lowercase code in capitals in the error message", () => {
+    let caught;
+    try {
+      validateExpense({ ...base, currency: "xyz" }, memberIds());
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(ValidationError);
+    expect(caught.message).toBe("Unsupported currency: XYZ.");
+  });
 });
 
 describe("validateExpense split", () => {

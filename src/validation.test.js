@@ -73,6 +73,55 @@ describe("validateExpense currency", () => {
   });
 });
 
+describe("validateExpense currency codes", () => {
+  const base = { description: "Test", amount: "100.00", paidBy: "u1", participants: ["u1", "u2"] };
+
+  it("[QP-QUIKSPL-277-1] Converts a lowercase currency code to its uppercase rate", () => {
+    const result = validateExpense({ ...base, currency: "usd" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+    expect(result.original).toEqual({ amountMinor: 10000, currency: "USD" });
+  });
+
+  it("[QP-QUIKSPL-277-2] Treats mixed-case currency codes the same as uppercase", () => {
+    const mixed = validateExpense({ ...base, currency: "Usd" }, memberIds());
+    const upper = validateExpense({ ...base, currency: "USD" }, memberIds());
+    expect(mixed.amountMinor).toBe(832000);
+    expect(mixed.amountMinor).toBe(upper.amountMinor);
+  });
+
+  it("[QP-QUIKSPL-277-3] Rejects an unknown three-letter currency code on the currency field", () => {
+    let error;
+    try {
+      validateExpense({ ...base, currency: "xyz" }, memberIds());
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(ValidationError);
+    expect(error.field).toBe("currency");
+    expect(error.message).toBe("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-277-4] Saves nothing when the currency is unsupported", () => {
+    expect(() => validateExpense({ ...base, currency: "XYZ" }, memberIds())).toThrow(ValidationError);
+  });
+
+  it("[QP-QUIKSPL-277-5] Rejects a currency code that is not three letters", () => {
+    let error;
+    try {
+      validateExpense({ ...base, currency: "US" }, memberIds());
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(ValidationError);
+    expect(error.field).toBe("currency");
+  });
+
+  it("[QP-QUIKSPL-277-6] Leaves rupee expenses unchanged", () => {
+    const result = validateExpense({ ...base, currency: "INR" }, memberIds());
+    expect(result.amountMinor).toBe(10000);
+  });
+});
+
 describe("validateExpense split", () => {
   const base = { description: "Test", amount: "100.00", paidBy: "u1", participants: ["u1", "u2"] };
 

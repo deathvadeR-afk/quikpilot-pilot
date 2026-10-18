@@ -105,6 +105,7 @@ jobs:
         env:
           QUIKPILOT_TARGETING_MODE: loop
           QUIKPILOT_CODEGEN_MODE: loop-tests
+          QUIKPILOT_MAP: "on"
 
       - name: Keep the files of a failed run
         if: failure()

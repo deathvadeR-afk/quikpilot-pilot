@@ -64,4 +64,51 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  describe("paging a 12-expense group", () => {
+    function bigGroup(count) {
+      const g = createGroup("g", "Test", [
+        { id: "u1", name: "A" },
+        { id: "u2", name: "B" },
+      ]);
+      for (let i = 0; i < count; i++) {
+        addExpense(g, {
+          description: `Expense ${i}`,
+          amountMinor: 100,
+          paidBy: "u1",
+          participants: ["u1", "u2"],
+          category: "food",
+          createdAt: new Date(Date.UTC(2026, 9, 1, 0, i)).toISOString(),
+        });
+      }
+      return g;
+    }
+
+    it("[QP-QUIKSPL-288-1] Page 1 returns at most pageSize expenses when there are more expenses than the page size", () => {
+      const result = listExpenses(bigGroup(12), { page: 1, pageSize: 10 });
+      expect(result.items).toHaveLength(10);
+    });
+
+    it("[QP-QUIKSPL-288-2] No expense appears on two pages when paginating a 12-expense list", () => {
+      const g = bigGroup(12);
+      const page1 = listExpenses(g, { page: 1, pageSize: 10 }).items.map((e) => e.id);
+      const page2 = listExpenses(g, { page: 2, pageSize: 10 }).items.map((e) => e.id);
+      expect(page1.filter((id) => page2.includes(id))).toEqual([]);
+    });
+
+    it("[QP-QUIKSPL-288-3] Every expense appears on exactly one page across all pages", () => {
+      const g = bigGroup(12);
+      const seen = [];
+      let page = 1;
+      let hasMore = true;
+      while (hasMore && page <= 20) {
+        const result = listExpenses(g, { page, pageSize: 10 });
+        seen.push(...result.items.map((e) => e.id));
+        hasMore = result.hasMore;
+        page++;
+      }
+      expect(seen).toHaveLength(12);
+      expect(new Set(seen).size).toBe(12);
+    });
+  });
 });

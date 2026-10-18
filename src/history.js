@@ -1,4 +1,5 @@
 import { isActive } from "./ledger.js";
+import { ValidationError } from "./validation.js";
 
 /**
  * The expense history: newest first, filterable, paged.
@@ -15,6 +16,12 @@ export const MAX_PAGE_SIZE = 50;
 
 export function listExpenses(group, options = {}) {
   const { memberId, category, from, to } = options;
+  if (options.pageSize !== undefined) {
+    const requested = Number(options.pageSize);
+    if (!Number.isInteger(requested) || requested <= 0) {
+      throw new ValidationError("pageSize", "Page size must be a whole number greater than zero.");
+    }
+  }
   const page = Math.max(1, Math.floor(Number(options.page) || 1));
   const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(Number(options.pageSize) || 10)));
 
@@ -29,7 +36,7 @@ export function listExpenses(group, options = {}) {
   const start = (page - 1) * pageSize;
   const end = start + pageSize;
   return {
-    items: items.slice(start, end + 1),
+    items: items.slice(start, end),
     page,
     pageSize,
     total: items.length,

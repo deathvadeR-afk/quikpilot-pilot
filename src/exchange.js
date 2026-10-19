@@ -17,6 +17,16 @@ export function supportedCurrencies() {
   return Object.keys(RATES);
 }
 
+/** Normalise a currency code to capitals, the form the rate table is keyed by. */
+export function normaliseCurrency(code) {
+  return String(code).trim().toUpperCase();
+}
+
+/** True only for a currency the project defines a rate for. */
+export function hasRate(currency) {
+  return Object.prototype.hasOwnProperty.call(RATES, currency);
+}
+
 export function rateFor(currency) {
   return RATES[currency] ?? 1;
 }

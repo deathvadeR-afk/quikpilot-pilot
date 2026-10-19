@@ -12,6 +12,7 @@ import {
   updateExpense,
 } from "./ledger.js";
 import { ValidationError } from "./validation.js";
+import { validateExpense } from "./validation.js";
 
 function group() {
   return createGroup("g", "Test", [
@@ -193,5 +194,59 @@ describe("members", () => {
 
   it("will not remove someone who is not in the group", () => {
     expect(() => removeMember(group(), "zz")).toThrow("not in this group");
+  });
+});
+
+describe("currency on save", () => {
+  const save = (g, currency) =>
+    addExpense(
+      g,
+      validateExpense(
+        { description: "Lunch", amount: "100.00", currency, paidBy: "u1", participants: ["u1", "u2"] },
+        g.members.map((m) => m.id),
+      ),
+    );
+
+  const rejectionOf = (fn) => {
+    try {
+      fn();
+    } catch (error) {
+      return error;
+    }
+    return undefined;
+  };
+
+  it("[QP-QUIKSPL-298-1] Converts a lowercase currency code the same as its uppercase form", () => {
+    const lower = save(group(), "usd");
+    const upper = save(group(), "USD");
+    expect(lower.amountMinor).toBe(832000);
+    expect(lower.amountMinor).toBe(upper.amountMinor);
+  });
+
+  it("[QP-QUIKSPL-298-2] Accepts a mixed-case currency code and converts it like the uppercase code", () => {
+    const mixed = save(group(), "UsD");
+    expect(mixed).toBeDefined();
+    expect(mixed.amountMinor).toBe(832000);
+  });
+
+  it("[QP-QUIKSPL-298-3] Rejects a three-letter code with no rate using a ValidationError on currency", () => {
+    const error = rejectionOf(() => save(group(), "XYZ"));
+    expect(error).toBeInstanceOf(ValidationError);
+    expect(error.field).toBe("currency");
+    expect(error.message).toBe("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-298-4] Shows the rejected code in capitals when entered in lowercase", () => {
+    const error = rejectionOf(() => save(group(), "xyz"));
+    expect(error).toBeInstanceOf(ValidationError);
+    expect(error.field).toBe("currency");
+    expect(error.message).toBe("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-298-5] Leaves no expense record when the currency is unsupported", () => {
+    const g = group();
+    const before = g.expenses.length;
+    rejectionOf(() => save(g, "XYZ"));
+    expect(g.expenses).toHaveLength(before);
   });
 });

@@ -71,6 +71,55 @@ describe("validateExpense currency", () => {
       "Currency must be a 3-letter code.",
     );
   });
+
+  it("[QP-QUIKSPL-312-1] Converts a lowercase currency code at its rate", () => {
+    const result = validateExpense({ ...base, currency: "usd" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+  });
+
+  it("[QP-QUIKSPL-312-2] Accepts a mixed-case currency code and converts it at its rate", () => {
+    const result = validateExpense({ ...base, currency: "Usd" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+  });
+
+  it("[QP-QUIKSPL-312-3] Rejects an unknown three-letter currency code", () => {
+    let caught;
+    try {
+      validateExpense({ ...base, currency: "XYZ" }, memberIds());
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(ValidationError);
+    expect(caught.field).toBe("currency");
+    expect(caught.message).toBe("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-312-4] Shows an unknown lowercase code in capitals in the rejection message", () => {
+    let caught;
+    try {
+      validateExpense({ ...base, currency: "xyz" }, memberIds());
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(ValidationError);
+    expect(caught.field).toBe("currency");
+    expect(caught.message).toBe("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-312-5] Creates no expense record when the currency code is rejected", () => {
+    const expenses = [{}, {}, {}];
+    try {
+      expenses.push(validateExpense({ ...base, currency: "XYZ" }, memberIds()));
+    } catch {
+      // rejected, so nothing is saved
+    }
+    expect(expenses).toHaveLength(3);
+  });
+
+  it("[QP-QUIKSPL-312-6] Trims surrounding whitespace before resolving the currency code", () => {
+    const result = validateExpense({ ...base, currency: " usd " }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+  });
 });
 
 describe("validateExpense split", () => {

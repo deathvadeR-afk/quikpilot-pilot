@@ -71,6 +71,61 @@ describe("validateExpense currency", () => {
       "Currency must be a 3-letter code.",
     );
   });
+
+  it("[QP-QUIKSPL-268-1] Converts a lowercase usd expense the same as uppercase USD", () => {
+    const lower = validateExpense({ ...base, currency: "usd" }, memberIds());
+    const upper = validateExpense({ ...base, currency: "USD" }, memberIds());
+    expect(lower.amountMinor).toBe(832000);
+    expect(lower.amountMinor).toBe(upper.amountMinor);
+  });
+
+  it("[QP-QUIKSPL-268-2] Accepts a mixed-case currency code and converts it", () => {
+    const result = validateExpense({ ...base, currency: "Usd" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+  });
+
+  it("[QP-QUIKSPL-268-3] Rejects an unsupported three-letter code with a currency field error", () => {
+    let caught;
+    try {
+      validateExpense({ ...base, currency: "XYZ" }, memberIds());
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(ValidationError);
+    expect(caught.field).toBe("currency");
+    expect(caught.message).toBe("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-268-4] Shows an unsupported lowercase code in capitals in the error message", () => {
+    let caught;
+    try {
+      validateExpense({ ...base, currency: "xyz" }, memberIds());
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(ValidationError);
+    expect(caught.field).toBe("currency");
+    expect(caught.message).toBe("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-268-5] Rejects a malformed currency code instead of storing it as rupees", () => {
+    let caught;
+    let result;
+    try {
+      result = validateExpense({ ...base, currency: "US" }, memberIds());
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(ValidationError);
+    expect(caught.field).toBe("currency");
+    expect(result).toBeUndefined();
+  });
+
+  it("[QP-QUIKSPL-268-6] Leaves an expense already saved with a lowercase code unchanged", () => {
+    const stored = { amountMinor: 10000, currency: "usd" };
+    expect(stored.amountMinor).toBe(10000);
+    expect(stored.currency).toBe("usd");
+  });
 });
 
 describe("validateExpense split", () => {

@@ -16,6 +16,25 @@ function group() {
   return g;
 }
 
+function makeGroup(n) {
+  const g = createGroup("g", "Test", [
+    { id: "u1", name: "A" },
+    { id: "u2", name: "B" },
+    { id: "u3", name: "C" },
+  ]);
+  for (let i = 1; i <= n; i++) {
+    addExpense(g, {
+      description: `Exp ${i}`,
+      amountMinor: 100,
+      paidBy: "u1",
+      participants: ["u1", "u2"],
+      category: "food",
+      createdAt: `2026-10-${String(i).padStart(2, "0")}T09:00:00.000Z`,
+    });
+  }
+  return g;
+}
+
 describe("listExpenses", () => {
   it("lists newest first with the total", () => {
     const result = listExpenses(group());
@@ -63,5 +82,59 @@ describe("listExpenses", () => {
 
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
+  });
+
+  it("[QP-QUIKSPL-264-1] Page 1 with 12 expenses and pageSize 10 shows exactly 10 items", () => {
+    const result = listExpenses(makeGroup(12), { page: 1, pageSize: 10 });
+    expect(result.items).toHaveLength(10);
+  });
+
+  it("[QP-QUIKSPL-264-2] Page 2 with 12 expenses and pageSize 10 shows exactly 2 items", () => {
+    const result = listExpenses(makeGroup(12), { page: 2, pageSize: 10 });
+    expect(result.items).toHaveLength(2);
+  });
+
+  it("[QP-QUIKSPL-264-3] No expense is repeated across page 1 and page 2", () => {
+    const g = makeGroup(12);
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 });
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 });
+    const ids1 = new Set(page1.items.map((e) => e.id));
+    const ids2 = new Set(page2.items.map((e) => e.id));
+    const overlap = [...ids1].filter((id) => ids2.has(id));
+    expect(overlap).toHaveLength(0);
+  });
+
+  it("[QP-QUIKSPL-264-4] All 12 expenses are reachable across the pages with no omissions", () => {
+    const g = makeGroup(12);
+    const all = [];
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const result = listExpenses(g, { page, pageSize: 10 });
+      all.push(...result.items);
+      hasMore = result.hasMore;
+      page++;
+    }
+    expect(all).toHaveLength(12);
+    const ids = all.map((e) => e.id);
+    expect(new Set(ids).size).toBe(12);
+  });
+
+  it("[QP-QUIKSPL-264-5] Exact multiple of pageSize produces no extra empty page", () => {
+    const g = makeGroup(20);
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 });
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 });
+    const page3 = listExpenses(g, { page: 3, pageSize: 10 });
+    expect(page1.items).toHaveLength(10);
+    expect(page2.items).toHaveLength(10);
+    expect(page3.items).toHaveLength(0);
+  });
+
+  it("[QP-QUIKSPL-264-6] A single expense with pageSize 10 appears on page 1 only", () => {
+    const g = makeGroup(1);
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 });
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(page1.items).toHaveLength(1);
+    expect(page2.items).toHaveLength(0);
   });
 });

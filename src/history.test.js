@@ -65,3 +65,57 @@ describe("listExpenses", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
 });
+
+describe("listExpenses paging", () => {
+  function twelveExpenses() {
+    const g = createGroup("g", "Paging", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    for (let i = 1; i <= 12; i++) {
+      addExpense(g, {
+        description: `E${i}`,
+        amountMinor: 100,
+        paidBy: "u1",
+        participants: ["u1", "u2"],
+        category: "food",
+        createdAt: `2026-10-${String(i).padStart(2, "0")}T09:00:00.000Z`,
+      });
+    }
+    return g;
+  }
+
+  it("[QP-QUIKSPL-270-1] Page 1 of 12 expenses with page size 10 shows exactly 10 expenses", () => {
+    const result = listExpenses(twelveExpenses(), { page: 1, pageSize: 10 });
+    expect(result.items).toHaveLength(10);
+  });
+
+  it("[QP-QUIKSPL-270-2] Page 2 of 12 expenses shows only the expenses not on page 1", () => {
+    const g = twelveExpenses();
+    const page1Ids = listExpenses(g, { page: 1, pageSize: 10 }).items.map((e) => e.id);
+    const page2Ids = listExpenses(g, { page: 2, pageSize: 10 }).items.map((e) => e.id);
+    expect(page2Ids).toHaveLength(2);
+    expect(page2Ids.filter((id) => page1Ids.includes(id))).toEqual([]);
+    expect(new Set([...page1Ids, ...page2Ids]).size).toBe(12);
+  });
+
+  it("[QP-QUIKSPL-270-3] No expense appears on two pages when the list is paged through in full", () => {
+    const g = twelveExpenses();
+    const seen = [];
+    let page = 1;
+    let result;
+    do {
+      result = listExpenses(g, { page, pageSize: 10 });
+      seen.push(...result.items.map((e) => e.id));
+      page++;
+    } while (result.hasMore && page <= 20);
+    expect(seen).toHaveLength(12);
+    expect(new Set(seen).size).toBe(12);
+  });
+
+  it("[QP-QUIKSPL-270-4] Last page reports no more pages when it holds fewer than the page size", () => {
+    const result = listExpenses(twelveExpenses(), { page: 2, pageSize: 10 });
+    expect(result.items).toHaveLength(2);
+    expect(result.hasMore).toBe(false);
+  });
+});

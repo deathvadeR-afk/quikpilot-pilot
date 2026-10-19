@@ -12,6 +12,7 @@ import {
   updateExpense,
 } from "./ledger.js";
 import { ValidationError } from "./validation.js";
+import { listExpenses } from "./history.js";
 
 function group() {
   return createGroup("g", "Test", [
@@ -193,5 +194,47 @@ describe("members", () => {
 
   it("will not remove someone who is not in the group", () => {
     expect(() => removeMember(group(), "zz")).toThrow("not in this group");
+  });
+});
+
+describe("listExpenses pagination", () => {
+  function pagedGroup() {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    for (let i = 1; i <= 12; i++) {
+      addExpense(g, {
+        description: `Expense ${i}`,
+        amountMinor: 100,
+        paidBy: "u1",
+        participants: ["u1", "u2"],
+        createdAt: `2026-10-${String(i).padStart(2, "0")}T09:00:00.000Z`,
+      });
+    }
+    return g;
+  }
+
+  it("[QP-QUIKSPL-295-1] Page 1 shows exactly pageSize expenses when more exist", () => {
+    const page = listExpenses(pagedGroup(), { page: 1, pageSize: 10 });
+    expect(page.items).toHaveLength(10);
+  });
+
+  it("[QP-QUIKSPL-295-2] Page 2 shows the remaining expenses without repeating page 1", () => {
+    const g = pagedGroup();
+    const first = listExpenses(g, { page: 1, pageSize: 10 }).items.map((e) => e.id);
+    const second = listExpenses(g, { page: 2, pageSize: 10 }).items.map((e) => e.id);
+    expect(second).toHaveLength(2);
+    expect(second.filter((id) => first.includes(id))).toEqual([]);
+  });
+
+  it("[QP-QUIKSPL-295-3] Every expense appears on exactly one page across all pages", () => {
+    const g = pagedGroup();
+    const all = [
+      ...listExpenses(g, { page: 1, pageSize: 10 }).items,
+      ...listExpenses(g, { page: 2, pageSize: 10 }).items,
+    ].map((e) => e.id);
+    expect(all).toHaveLength(12);
+    expect(new Set(all).size).toBe(12);
   });
 });

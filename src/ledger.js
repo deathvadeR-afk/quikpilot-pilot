@@ -1,4 +1,5 @@
 import { computeShares } from "./splits.js";
+import { convertToBase } from "./exchange.js";
 import { ValidationError, validateCategory, validateDescription } from "./validation.js";
 
 /**
@@ -23,9 +24,15 @@ export function addExpense(group, expense) {
   if (expense.amountMinor < 0) {
     throw new ValidationError("amount", "Negative numbers are not allowed");
   }
+  let currency;
+  if (expense.currency !== undefined) {
+    currency = String(expense.currency).toUpperCase();
+    convertToBase(expense.amountMinor, currency);
+  }
   const entry = {
     id: `exp_${group.expenses.length + 1}`,
     ...expense,
+    ...(currency === undefined ? {} : { currency }),
     createdAt: expense.createdAt ?? new Date().toISOString(),
   };
   group.expenses.push(entry);

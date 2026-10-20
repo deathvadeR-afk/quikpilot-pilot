@@ -133,3 +133,39 @@ describe("validateExpense split", () => {
     ).toThrow("Shares must be whole numbers greater than zero.");
   });
 });
+
+describe("validateExpense currency codes", () => {
+  const base = { description: "Test", amount: "100.00", paidBy: "u1", participants: ["u1", "u2"] };
+
+  it("[QP-QUIKSPL-299-1] Converts a lowercase currency code the same as its uppercase form", () => {
+    const lower = validateExpense({ ...base, currency: "usd" }, memberIds());
+    const upper = validateExpense({ ...base, currency: "USD" }, memberIds());
+    expect(lower.amountMinor).toBe(upper.amountMinor);
+    expect(lower.amountMinor).toBe(832000);
+  });
+
+  it("[QP-QUIKSPL-299-2] Accepts a mixed-case currency code and matches the uppercase result", () => {
+    const mixed = validateExpense({ ...base, currency: "Usd" }, memberIds());
+    const upper = validateExpense({ ...base, currency: "USD" }, memberIds());
+    expect(mixed).toEqual(upper);
+    expect(mixed.amountMinor).toBe(832000);
+  });
+
+  it("[QP-QUIKSPL-299-3] Rejects an unsupported three-letter currency code with a ValidationError on the currency field", () => {
+    expect(() => validateExpense({ ...base, currency: "XYZ" }, memberIds())).toThrow(ValidationError);
+    expect(() => validateExpense({ ...base, currency: "XYZ" }, memberIds())).toThrow("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-299-4] Leaves no expense record behind when an unsupported code is rejected", () => {
+    let saved;
+    expect(() => {
+      saved = validateExpense({ ...base, currency: "XYZ" }, memberIds());
+    }).toThrow(ValidationError);
+    expect(saved).toBeUndefined();
+  });
+
+  it("[QP-QUIKSPL-299-5] Shows an unsupported lowercase code in capitals in the error message", () => {
+    expect(() => validateExpense({ ...base, currency: "xyz" }, memberIds())).toThrow(ValidationError);
+    expect(() => validateExpense({ ...base, currency: "xyz" }, memberIds())).toThrow("Unsupported currency: XYZ.");
+  });
+});

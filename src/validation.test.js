@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { validateExpense, ValidationError } from "./validation.js";
+import { createGroup, addExpense } from "./ledger.js";
 
 function memberIds() {
   return ["u1", "u2", "u3"];
@@ -131,5 +132,62 @@ describe("validateExpense split", () => {
     expect(() =>
       validateExpense({ ...base, splitType: "shares", splitDetails: { u1: 1.5, u2: 1 } }, memberIds()),
     ).toThrow("Shares must be whole numbers greater than zero.");
+  });
+});
+
+describe("validateExpense currency normalisation", () => {
+  const base = { description: "Test", amount: "100.00", paidBy: "u1", participants: ["u1", "u2"] };
+
+  it("[QP-QUIKSPL-305-1] Converts a lowercase usd expense to the USD amount", () => {
+    const result = validateExpense({ ...base, currency: "usd" }, memberIds());
+    expect(result.amountMinor).toBe(832000);
+  });
+
+  it("[QP-QUIKSPL-305-2] Stores the same amount for mixed-case and uppercase currency codes", () => {
+    const mixed = validateExpense({ ...base, currency: "Usd" }, memberIds());
+    const upper = validateExpense({ ...base, currency: "USD" }, memberIds());
+    expect(mixed.amountMinor).toBe(832000);
+    expect(upper.amountMinor).toBe(832000);
+  });
+
+  it("[QP-QUIKSPL-305-3] Rejects an unsupported three-letter currency code with a currency field error", () => {
+    let caught;
+    try {
+      validateExpense({ ...base, currency: "xyz" }, memberIds());
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(ValidationError);
+    expect(caught.field).toBe("currency");
+    expect(caught.message).toBe("Unsupported currency: XYZ.");
+  });
+
+  it("[QP-QUIKSPL-305-4] Leaves no expense record when the currency is unsupported", () => {
+    const group = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    try {
+      addExpense(group, validateExpense({ ...base, currency: "XYZ" }, memberIds()));
+    } catch (e) {
+      expect(e).toBeInstanceOf(ValidationError);
+    }
+    expect(group.expenses).toHaveLength(0);
+  });
+
+  it("[QP-QUIKSPL-305-5] Rejects a currency value that is not exactly three letters", () => {
+    let caught;
+    try {
+      validateExpense({ ...base, currency: "US1" }, memberIds());
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(ValidationError);
+    expect(caught.field).toBe("currency");
+  });
+
+  it("[QP-QUIKSPL-305-6] Trims surrounding whitespace from a valid currency code before converting", () => {
+    const result = validateExpense({ ...base, currency: " usd " }, memberIds());
+    expect(result.amountMinor).toBe(832000);
   });
 });

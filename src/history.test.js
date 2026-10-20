@@ -65,3 +65,49 @@ describe("listExpenses", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
 });
+
+describe("listExpenses paging", () => {
+  function bigGroup(count) {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    for (let i = 1; i <= count; i++) {
+      addExpense(g, {
+        description: `Item ${i}`,
+        amountMinor: 100,
+        paidBy: "u1",
+        participants: ["u1", "u2"],
+        category: "food",
+        createdAt: `2026-10-${String(i).padStart(2, "0")}T09:00:00.000Z`,
+      });
+    }
+    return g;
+  }
+
+  it("[QP-QUIKSPL-294-1] Page 1 shows exactly pageSize expenses when 12 exist", () => {
+    const result = listExpenses(bigGroup(12), { page: 1, pageSize: 10 });
+    expect(result.items).toHaveLength(10);
+  });
+
+  it("[QP-QUIKSPL-294-2] Page 2 shows the remaining expenses when 12 exist", () => {
+    const result = listExpenses(bigGroup(12), { page: 2, pageSize: 10 });
+    expect(result.items).toHaveLength(2);
+  });
+
+  it("[QP-QUIKSPL-294-3] No expense appears on two pages when paging through 12 expenses", () => {
+    const g = bigGroup(12);
+    const first = listExpenses(g, { page: 1, pageSize: 10 }).items.map((e) => e.id);
+    const second = listExpenses(g, { page: 2, pageSize: 10 }).items.map((e) => e.id);
+    const shared = first.filter((id) => second.includes(id));
+    expect(shared).toHaveLength(0);
+    expect(new Set([...first, ...second]).size).toBe(12);
+  });
+
+  it("[QP-QUIKSPL-294-4] No page exceeds the page size for a larger set of expenses", () => {
+    const g = bigGroup(25);
+    for (let page = 1; page <= 3; page++) {
+      expect(listExpenses(g, { page, pageSize: 10 }).items.length).toBeLessThanOrEqual(10);
+    }
+  });
+});

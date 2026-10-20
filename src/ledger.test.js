@@ -12,6 +12,7 @@ import {
   updateExpense,
 } from "./ledger.js";
 import { ValidationError } from "./validation.js";
+import { listExpenses } from "./history.js";
 
 function group() {
   return createGroup("g", "Test", [
@@ -193,5 +194,51 @@ describe("members", () => {
 
   it("will not remove someone who is not in the group", () => {
     expect(() => removeMember(group(), "zz")).toThrow("not in this group");
+  });
+});
+
+describe("listExpenses paging", () => {
+  function twelveExpenses() {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    for (let i = 1; i <= 12; i++) {
+      addExpense(g, {
+        description: `Expense ${i}`,
+        amountMinor: 100,
+        paidBy: "u1",
+        participants: ["u1", "u2"],
+        createdAt: `2026-10-${String(i).padStart(2, "0")}T09:00:00.000Z`,
+      });
+    }
+    return g;
+  }
+
+  it("[QP-QUIKSPL-293-1] Page 1 returns at most pageSize expenses when 12 expenses exist", () => {
+    const page1 = listExpenses(twelveExpenses(), { page: 1, pageSize: 10 });
+    expect(page1.items).toHaveLength(10);
+  });
+
+  it("[QP-QUIKSPL-293-2] No expense repeats between page 1 and page 2", () => {
+    const g = twelveExpenses();
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 }).items.map((e) => e.description);
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 }).items.map((e) => e.description);
+    const overlap = page1.filter((d) => page2.includes(d));
+    expect(overlap).toEqual([]);
+    // Newest first, so the 11th expense is "Expense 2".
+    expect([...page1, ...page2].filter((d) => d === "Expense 2")).toHaveLength(1);
+  });
+
+  it("[QP-QUIKSPL-293-3] Every expense appears on exactly one page across all pages", () => {
+    const g = twelveExpenses();
+    const all = [];
+    for (let page = 1; page <= 5; page++) {
+      const result = listExpenses(g, { page, pageSize: 10 });
+      all.push(...result.items.map((e) => e.description));
+      if (!result.hasMore || result.items.length === 0) break;
+    }
+    expect(all).toHaveLength(12);
+    expect(new Set(all).size).toBe(all.length);
   });
 });

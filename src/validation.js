@@ -1,5 +1,5 @@
 import { toMinor } from "./money.js";
-import { BASE_CURRENCY, convertToBase } from "./exchange.js";
+import { BASE_CURRENCY, convertToBase, hasRate, normaliseCurrency } from "./exchange.js";
 import { SPLIT_TYPES, weighted } from "./splits.js";
 
 export class ValidationError extends Error {
@@ -129,9 +129,12 @@ export function validateExpense(input, memberIds) {
   const category = validateCategory(input.category);
 
   const currency =
-    input.currency === undefined || input.currency === "" ? BASE_CURRENCY : String(input.currency).trim();
+    input.currency === undefined || input.currency === "" ? BASE_CURRENCY : normaliseCurrency(input.currency);
   if (currency.length !== 3) {
     throw new ValidationError("currency", "Currency must be a 3-letter code.");
+  }
+  if (!hasRate(currency)) {
+    throw new ValidationError("currency", `Unsupported currency: ${currency}.`);
   }
   const amountMinor = convertToBase(originalMinor, currency);
 

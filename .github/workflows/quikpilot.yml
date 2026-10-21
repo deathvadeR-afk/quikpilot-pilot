@@ -13,7 +13,7 @@
 # arrives as a new pull request.
 #
 # templateVersion: 9
-# project: cmpqrve90001t97sjla4q6qp0
+# project: cmub758vp00bzxhri6iqbf0u1
 # ============================================================================
 name: QuikPilot
 
@@ -101,7 +101,10 @@ jobs:
           node-version: "20"
 
       - name: Run QuikPilot
-        run: npx --yes @quikit/quikpilot-runner@9.2.0-rc.6
+        run: npx --yes @quikit/quikpilot-runner@9.3.0-rc.38
+        env:
+          QUIKPILOT_TARGETING_MODE: loop
+          QUIKPILOT_CODEGEN_MODE: loop-tests
 
       - name: Keep the files of a failed run
         if: failure()

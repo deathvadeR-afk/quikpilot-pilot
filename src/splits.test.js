@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { computeShares, weighted } from "./splits.js";
+import { createGroup, addExpense, computeBalances } from "./ledger.js";
 
 const sum = (parts) => parts.reduce((a, b) => a + b, 0);
 
@@ -67,5 +68,55 @@ describe("computeShares", () => {
 
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
+  });
+
+  it("[QP-QUIKSPL-316-1] Shares total the expense exactly for a 50/50 split of 10.01", () => {
+    const shares = computeShares({
+      amountMinor: 1001,
+      participants: ["a", "b"],
+      splitType: "percent",
+      splitDetails: { a: 50, b: 50 },
+    });
+    expect(shares).toEqual([501, 500]);
+    expect(sum(shares)).toBe(1001);
+  });
+
+  it("[QP-QUIKSPL-316-2] The extra minor unit goes to the participant with the largest remainder", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants,
+      splitType: "percent",
+      splitDetails: { a: 33.33, b: 33.33, c: 33.34 },
+    });
+    expect(shares).toEqual([333, 333, 334]);
+    expect(sum(shares)).toBe(1000);
+  });
+
+  it("[QP-QUIKSPL-316-3] Clean percentage splits keep their existing share values", () => {
+    const shares = computeShares({
+      amountMinor: 10000,
+      participants,
+      splitType: "percent",
+      splitDetails: { a: 25, b: 25, c: 50 },
+    });
+    expect(shares).toEqual([2500, 2500, 5000]);
+  });
+
+  it("[QP-QUIKSPL-316-4] Group balances sum to zero after a percentage split", () => {
+    const group = createGroup("g1", "Trip", [
+      { id: "a", name: "A" },
+      { id: "b", name: "B" },
+      { id: "c", name: "C" },
+    ]);
+    addExpense(group, {
+      description: "Dinner",
+      amountMinor: 1000,
+      paidBy: "a",
+      participants: ["a", "b", "c"],
+      splitType: "percent",
+      splitDetails: { a: 33.33, b: 33.33, c: 33.34 },
+    });
+    const balances = computeBalances(group);
+    expect(Object.values(balances).reduce((x, y) => x + y, 0)).toBe(0);
   });
 });

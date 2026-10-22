@@ -64,4 +64,37 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-320-1] Lists both expenses made on the end date when from and to are the same plain date", () => {
+    const g = createGroup("g", "Goa", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Farewell drinks", amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], createdAt: "2026-10-02T18:00:00.000Z" });
+    addExpense(g, { description: "Lunch", amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], createdAt: "2026-10-02T12:00:00.000Z" });
+    const result = listExpenses(g, { from: "2026-10-02", to: "2026-10-02" });
+    const ids = result.items.map((e) => e.id);
+    expect(result.items.map((e) => e.description).sort()).toEqual(["Farewell drinks", "Lunch"]);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("[QP-QUIKSPL-320-2] Includes an expense created at the last millisecond of the end date", () => {
+    const g = createGroup("g", "Goa", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Late night", amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], createdAt: "2026-10-02T23:59:59.999Z" });
+    const result = listExpenses(g, { to: "2026-10-02" });
+    expect(result.items.map((e) => e.description)).toContain("Late night");
+  });
+
+  it("[QP-QUIKSPL-320-3] Excludes an expense created at the first millisecond of the day after the end date", () => {
+    const g = createGroup("g", "Goa", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Early next day", amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], createdAt: "2026-10-03T00:00:00.000Z" });
+    const result = listExpenses(g, { to: "2026-10-02" });
+    expect(result.items.map((e) => e.description)).not.toContain("Early next day");
+  });
 });

@@ -1,4 +1,4 @@
-import { computeShares } from "./splits.js";
+import { computeShares, weighted } from "./splits.js";
 import { ValidationError, validateCategory, validateDescription } from "./validation.js";
 
 /**
@@ -48,9 +48,17 @@ export function updateExpense(group, id, changes) {
   if (changes.amountMinor !== undefined && changes.amountMinor < 0) {
     throw new ValidationError("amount", "Negative numbers are not allowed");
   }
+  if (changes.amountMinor !== undefined && expense.splitType === "exact" && expense.amountMinor === 0) {
+    throw new ValidationError("amount", "An exact split of a zero amount cannot be rescaled.");
+  }
   if (changes.description !== undefined) expense.description = validateDescription(changes.description);
   if (changes.category !== undefined) expense.category = validateCategory(changes.category);
   if (changes.amountMinor !== undefined) {
+    if (expense.splitType === "exact") {
+      const current = expense.participants.map((p) => expense.splitDetails[p]);
+      const rescaled = weighted(changes.amountMinor, current);
+      expense.splitDetails = Object.fromEntries(expense.participants.map((p, i) => [p, rescaled[i]]));
+    }
     expense.amountMinor = changes.amountMinor;
     if (changes.original) expense.original = changes.original;
   }

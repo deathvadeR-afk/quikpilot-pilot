@@ -64,4 +64,32 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-321-1] includes both expenses made on the end date when from and to are the same plain date", () => {
+    const g = createGroup("g", "Goa trip", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    const add = (description, createdAt) =>
+      addExpense(g, { description, amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], category: "food", createdAt });
+    add("Farewell drinks", "2026-10-02T20:00:00.000Z");
+    add("Lunch", "2026-10-02T13:00:00.000Z");
+    add("Breakfast", "2026-10-01T08:00:00.000Z");
+    add("Dinner", "2026-10-03T19:00:00.000Z");
+    const result = listExpenses(g, { from: "2026-10-02", to: "2026-10-02" });
+    expect(result.items.map((e) => e.description).sort()).toEqual(["Farewell drinks", "Lunch"]);
+  });
+
+  it("[QP-QUIKSPL-321-2] treats a plain end date as the last millisecond of that UTC day", () => {
+    const g = createGroup("g", "Goa trip", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    const add = (description, createdAt) =>
+      addExpense(g, { description, amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], category: "food", createdAt });
+    add("Last moment", "2026-10-02T23:59:59.999Z");
+    add("Next day", "2026-10-03T00:00:00.000Z");
+    const result = listExpenses(g, { to: "2026-10-02" });
+    expect(result.items.map((e) => e.description)).toEqual(["Last moment"]);
+  });
 });

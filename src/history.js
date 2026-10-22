@@ -22,7 +22,8 @@ export function listExpenses(group, options = {}) {
   if (memberId) items = items.filter((e) => e.paidBy === memberId || e.participants.includes(memberId));
   if (category) items = items.filter((e) => e.category === category);
   if (from) items = items.filter((e) => e.createdAt >= from);
-  if (to) items = items.filter((e) => e.createdAt <= to);
+  const toInstant = to && /^\d{4}-\d{2}-\d{2}$/.test(to) ? `${to}T23:59:59.999Z` : to;
+  if (toInstant) items = items.filter((e) => e.createdAt <= toInstant);
 
   items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
 

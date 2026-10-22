@@ -195,3 +195,58 @@ describe("members", () => {
     expect(() => removeMember(group(), "zz")).toThrow("not in this group");
   });
 });
+
+describe("removing members who appear in expenses", () => {
+  it("[QP-QUIKSPL-317-1] Refuses removing a zero-balance member who paid for an active expense", () => {
+    const g = createGroup("g", "Weekend cricket", [
+      { id: "hem", name: "Hemant" },
+      { id: "asha", name: "Asha" },
+    ]);
+    addExpense(g, { description: "New ball", amountMinor: 600, paidBy: "hem", participants: ["hem"] });
+    let caught;
+    try {
+      removeMember(g, "hem");
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(ValidationError);
+    expect(caught.field).toBe("memberId");
+    expect(caught.message).toBe("That member appears in expenses and cannot be removed.");
+  });
+
+  it("[QP-QUIKSPL-317-2] Allows removing a zero-balance member whose only expenses are deleted", () => {
+    const g = createGroup("g", "Weekend cricket", [
+      { id: "pri", name: "Priya" },
+      { id: "asha", name: "Asha" },
+    ]);
+    addExpense(g, { description: "Snacks", amountMinor: 400, paidBy: "pri", participants: ["pri"] });
+    deleteExpense(g, "exp_1");
+    removeMember(g, "pri");
+    expect(g.members.map((m) => m.id)).not.toContain("pri");
+  });
+
+  it("[QP-QUIKSPL-317-3] Allows removing a zero-balance member who appears in no expense", () => {
+    const g = createGroup("g", "Weekend cricket", [
+      { id: "hem", name: "Hemant" },
+      { id: "zed", name: "Zed" },
+    ]);
+    removeMember(g, "zed");
+    expect(g.members.map((m) => m.id)).not.toContain("zed");
+  });
+
+  it("[QP-QUIKSPL-317-4] Keeps group balances summable after a refused removal", () => {
+    const g = createGroup("g", "Weekend cricket", [
+      { id: "hem", name: "Hemant" },
+      { id: "asha", name: "Asha" },
+    ]);
+    addExpense(g, { description: "New ball", amountMinor: 600, paidBy: "hem", participants: ["hem"] });
+    expect(() => removeMember(g, "hem")).toThrow(ValidationError);
+    const balances = computeBalances(g);
+    for (const value of Object.values(balances)) {
+      expect(typeof value).toBe("number");
+    }
+    const total = Object.values(balances).reduce((a, b) => a + b, 0);
+    expect(typeof total).toBe("number");
+    expect(Number.isNaN(total)).toBe(false);
+  });
+});

@@ -22,7 +22,17 @@ export function listExpenses(group, options = {}) {
   if (memberId) items = items.filter((e) => e.paidBy === memberId || e.participants.includes(memberId));
   if (category) items = items.filter((e) => e.category === category);
   if (from) items = items.filter((e) => e.createdAt >= from);
-  if (to) items = items.filter((e) => e.createdAt <= to);
+  let effectiveTo = to;
+  if (effectiveTo) {
+    const toDate = new Date(effectiveTo);
+    // If 'to' is a plain date (e.g., 'YYYY-MM-DD'), convert it to the end of that UTC day.
+    // Check if the time part is zero, indicating a plain date.
+    if (toDate.toISOString().endsWith('T00:00:00.000Z')) {
+      toDate.setUTCHours(23, 59, 59, 999);
+      effectiveTo = toDate.toISOString();
+    }
+    items = items.filter((e) => e.createdAt <= effectiveTo);
+  }
 
   items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
 

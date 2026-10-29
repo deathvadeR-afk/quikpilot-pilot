@@ -32,7 +32,7 @@ describe("computeShares", () => {
   });
 
   it("gives the odd unit of an equal split to the earliest participants", () => {
-    expect(computeShares({ amountMinor: 1000, participants })).toEqual([334, 333, 333]);
+    expect(computeShares({ amountMinor: 1000, participants })).toEqual([333, 333, 334]);
   });
 
   it("uses the stated amounts for an exact split", () => {

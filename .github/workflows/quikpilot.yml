@@ -14,7 +14,7 @@
 #
 # templateVersion: 9
 # toolchains: node@20
-# project: cmub758vp00bzxhri6iqbf0u1
+# project: cmvtk7bwi00a34y2tfnhn9ic6
 # ============================================================================
 name: QuikPilot
 
@@ -118,7 +118,7 @@ jobs:
           restore-keys: quikpilot-deps-${{ runner.os }}-
 
       - name: Run QuikPilot
-        run: npx --yes @quikit/quikpilot-runner@9.3.0-rc.60
+        run: npx --yes @quikit/quikpilot-runner@9.3.0-rc.48
 
       - name: Save downloaded packages
         if: always() && steps.deps-cache.outputs.cache-hit != 'true'

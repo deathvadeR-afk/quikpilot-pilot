@@ -68,4 +68,26 @@ describe("computeShares", () => {
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
   });
+
+  it("[QP-QUIKSPL-327-1] hands the leftover minor unit to the earliest participant in list order", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["Asha", "Ben", "Chen"],
+      splitType: "percent",
+      splitDetails: { Asha: 33.33, Ben: 33.33, Chen: 33.34 },
+    });
+    expect(shares).toEqual([334, 333, 333]);
+    expect(sum(shares)).toBe(1000);
+  });
+
+  it("[QP-QUIKSPL-327-2] keeps the parts summing to the total when percentages divide it cleanly", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["Asha", "Ben", "Chen"],
+      splitType: "percent",
+      splitDetails: { Asha: 50, Ben: 30, Chen: 20 },
+    });
+    expect(shares).toEqual([500, 300, 200]);
+    expect(sum(shares)).toBe(1000);
+  });
 });

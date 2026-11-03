@@ -307,7 +307,7 @@ async function loadGroup(id) {
         `<div class="pay"><div class="line">${avatar(memberOf(s.from))}<div class="text"><div>${esc(nameOf(s.from))} pays ${esc(nameOf(s.to))}</div><div class="amt">${inr(s.amountMinor)}</div></div></div>` +
         `<button class="btn ghost sm" type="button" data-from="${esc(s.from)}" data-to="${esc(s.to)}" data-amt="${(s.amountMinor / 100).toFixed(2)}">Mark paid</button></div>`).join("")
     : `<div class="square">${avatar({ id: "ok", name: "✓" }).replace(/background:[^;]+/, "background:var(--owed)")}Everyone is square.</div>`;
-  document.querySelectorAll("#settlements button").forEach((b) => { b.onclick = () => markPaid(b.dataset); });
+  document.querySelectorAll("#settlements button").forEach((b) => { let busy = false; b.onclick = async () => { if (busy) return; busy = true; try { await markPaid(b.dataset); } finally { busy = false; } }; });
 
   $("paidBy").innerHTML = current.members.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("");
   renderSplitDetails();
@@ -457,7 +457,7 @@ $("more").onclick = () => { page += 1; loadHistory(false); };
 ["fCategory", "fFrom", "fTo"].forEach((id) => { $(id).onchange = () => loadHistory(true); });
 ["amount", "currency"].forEach((id) => { $(id).oninput = updateHint; });
 
-$("add").onclick = async () => {
+async function addExpense() {
   $("err").style.display = "none";
   const splitDetails = {};
   document.querySelectorAll("#splitDetails input").forEach((i) => { splitDetails[i.dataset.member] = i.value; });
@@ -482,6 +482,13 @@ $("add").onclick = async () => {
   }
   $("desc").value = ""; $("amount").value = "";
   await loadGroup(current.id);
+}
+
+let addBusy = false;
+$("add").onclick = async () => {
+  if (addBusy) return;
+  addBusy = true;
+  try { await addExpense(); } finally { addBusy = false; }
 };
 
 loadGroups();

@@ -79,12 +79,16 @@ jobs:
           set -euo pipefail
           job_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --jq '.jobs[] | select(.name == "exercise") | .id')
           gh api "repos/$GITHUB_REPOSITORY/check-runs/$job_id/annotations" --paginate --jq '.[] | [.annotation_level, .message] | join(": ")' | tee notices.txt
+          ack='ubuntu-latest label will migrate to Ubuntu 26'
+          grep -Eiv "$ack" notices.txt > fresh.txt || true
           {
             echo '### What GitHub said about the first job'
             echo
             if [ -s notices.txt ]; then sed 's/^/- /' notices.txt; else echo none; fi
+            echo
+            echo "Acknowledged and ignored: $(grep -Eic "$ack" notices.txt || true)"
           } >> "$GITHUB_STEP_SUMMARY"
-          if grep -Eiq 'deprecat|forced to run|will migrate|no longer|unsupported|end of life' notices.txt; then
+          if grep -Eiq 'deprecat|forced to run|will migrate|no longer|unsupported|end of life' fresh.txt; then
             echo "::error::GitHub is announcing a change that affects QuikPilot's workflow. See the job summary."
             exit 1
           fi

@@ -64,4 +64,27 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-341-1] Page 1 shows exactly the page size when more expenses exist", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }, { id: "u2", name: "B" }]);
+    for (let i = 1; i <= 12; i++) {
+      addExpense(g, { description: `E${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], category: "food", createdAt: `2026-10-${String(i).padStart(2, "0")}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items).toHaveLength(10);
+  });
+
+  it("[QP-QUIKSPL-341-2] Page 2 shows the remaining expenses without repeating any from page 1", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }, { id: "u2", name: "B" }]);
+    for (let i = 1; i <= 12; i++) {
+      addExpense(g, { description: `E${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], category: "food", createdAt: `2026-10-${String(i).padStart(2, "0")}T09:00:00.000Z` });
+    }
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 }).items;
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 }).items;
+    expect(page1).toHaveLength(10);
+    expect(page2).toHaveLength(2);
+    const shared = page1.filter((a) => page2.some((b) => b.id === a.id));
+    expect(shared).toHaveLength(0);
+    expect(new Set([...page1, ...page2].map((e) => e.id)).size).toBe(12);
+  });
 });

@@ -13,7 +13,7 @@
 # arrives as a new pull request.
 #
 # templateVersion: 9
-# toolchains: node@20
+# toolchains: node@24
 # project: cmvtk7bwi00a34y2tfnhn9ic6
 # ============================================================================
 name: QuikPilot
@@ -93,14 +93,15 @@ jobs:
       TEST_CMD: ${{ inputs.test_cmd }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          package-manager-cache: false
+          node-version: "24"
       - name: Customer setup steps
         if: hashFiles('.github/actions/quikpilot-setup/action.yml') != ''
         uses: ./.github/actions/quikpilot-setup
@@ -133,7 +134,7 @@ jobs:
 
       - name: Keep the files of a failed run
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: quikpilot-failed-run
           path: quikpilot-failure/

@@ -12,6 +12,7 @@ import {
   removeMember,
   settleUp,
   updateExpense,
+  restoreExpense,
 } from "./ledger.js";
 import { validateExpense, ValidationError } from "./validation.js";
 import { BASE_CURRENCY, convertToBase } from "./exchange.js";
@@ -81,6 +82,13 @@ export const app = createServer(async (req, res) => {
       if (body === null) return json(res, 400, { error: "Body must be valid JSON." });
       const group = addGroup(body.name, body.members);
       return json(res, 201, { id: group.id, name: group.name, members: group.members });
+    }
+
+    const restore = match("api/groups/:id/expenses/:itemId/restore", parts);
+    if (restore && method === "POST") {
+      const group = getGroup(restore.id);
+      if (!group) return json(res, 404, { error: "Group not found." });
+      return json(res, 200, display(restoreExpense(group, restore.itemId)));
     }
 
     // Everything below is /api/groups/:id/...

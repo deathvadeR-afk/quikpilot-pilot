@@ -68,6 +68,17 @@ export function deleteExpense(group, id) {
   return expense;
 }
 
+/** Undo a soft delete: the expense is active again and records when it was restored. */
+export function restoreExpense(group, id) {
+  const expense = findExpense(group, id);
+  if (!expense.deletedAt) {
+    throw new ValidationError("id", "This expense is not deleted.");
+  }
+  delete expense.deletedAt;
+  expense.restoredAt = new Date().toISOString();
+  return expense;
+}
+
 /** Record that `from` has paid `to` outside the app, which moves both balances towards zero. */
 export function recordPayment(group, { from, to, amountMinor }) {
   const ids = group.members.map((m) => m.id);

@@ -166,6 +166,54 @@ describe("updateExpense", () => {
     deleteExpense(g, "exp_1");
     expect(() => updateExpense(g, "exp_1", { description: "x" })).toThrow("deleted expense cannot be edited");
   });
+
+  it("[QP-QUIKSPL-351-1] Scales both shares in proportion when the amount doubles", () => {
+    const g = group();
+    addExpense(g, { description: "Exact", amountMinor: 1000, paidBy: "u1", participants: ["u1", "u2"], splitType: "exact", splitDetails: { u1: 600, u2: 400 } });
+    updateExpense(g, "exp_1", { amountMinor: 2000 });
+    const { splitDetails } = g.expenses[0];
+    expect(splitDetails.u1).toBe(1200);
+    expect(splitDetails.u2).toBe(800);
+    expect(splitDetails.u1 + splitDetails.u2).toBe(2000);
+  });
+
+  it("[QP-QUIKSPL-351-2] Gives leftover minor units to the earliest share when remainders are equal", () => {
+    const g = group();
+    addExpense(g, { description: "Exact", amountMinor: 300, paidBy: "u1", participants: ["u1", "u2", "u3"], splitType: "exact", splitDetails: { u1: 100, u2: 100, u3: 100 } });
+    updateExpense(g, "exp_1", { amountMinor: 1000 });
+    const { splitDetails } = g.expenses[0];
+    expect([splitDetails.u1, splitDetails.u2, splitDetails.u3]).toEqual([334, 333, 333]);
+    expect(splitDetails.u1 + splitDetails.u2 + splitDetails.u3).toBe(1000);
+  });
+
+  it("[QP-QUIKSPL-351-3] Gives the leftover minor unit to the share with the largest remainder", () => {
+    const g = group();
+    addExpense(g, { description: "Exact", amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], splitType: "exact", splitDetails: { u1: 30, u2: 70 } });
+    updateExpense(g, "exp_1", { amountMinor: 101 });
+    const { splitDetails } = g.expenses[0];
+    expect(splitDetails.u1 + splitDetails.u2).toBe(101);
+    expect(splitDetails.u1).toBe(30);
+    expect(splitDetails.u2).toBe(71);
+  });
+
+  it("[QP-QUIKSPL-351-4] Rejects an amount edit when current shares total zero", () => {
+    const g = group();
+    addExpense(g, { description: "Exact", amountMinor: 0, paidBy: "u1", participants: ["u1", "u2"], splitType: "exact", splitDetails: { u1: 0, u2: 0 } });
+    expect(() => updateExpense(g, "exp_1", { amountMinor: 1000 })).toThrow(ValidationError);
+    expect(g.expenses[0].splitDetails).toEqual({ u1: 0, u2: 0 });
+    expect(g.expenses[0].amountMinor).toBe(0);
+  });
+
+  it("[QP-QUIKSPL-351-5] Keeps balances summing to zero after an amount edit", () => {
+    const g = group();
+    addExpense(g, { description: "Exact", amountMinor: 1000, paidBy: "u1", participants: ["u1", "u2"], splitType: "exact", splitDetails: { u1: 600, u2: 400 } });
+    updateExpense(g, "exp_1", { amountMinor: 2000 });
+    const { splitDetails } = g.expenses[0];
+    expect(splitDetails.u1 + splitDetails.u2).toBe(2000);
+    const balances = computeBalances(g);
+    assertBalanced(balances);
+    expect(Object.values(balances).reduce((a, b) => a + b, 0)).toBe(0);
+  });
 });
 
 describe("members", () => {

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { computeShares, weighted } from "./splits.js";
+import { createGroup, addExpense, computeBalances } from "./ledger.js";
 
 const sum = (parts) => parts.reduce((a, b) => a + b, 0);
 
@@ -67,5 +68,44 @@ describe("computeShares", () => {
 
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
+  });
+
+  it("[QP-QUIKSPL-350-1] splits 10.01 at 50/50 into shares that sum to 10.01, with the extra unit to the earliest participant", () => {
+    const shares = computeShares({
+      amountMinor: 1001,
+      participants: ["A", "B"],
+      splitType: "percent",
+      splitDetails: { A: 50, B: 50 },
+    });
+    expect(shares).toEqual([501, 500]);
+    expect(sum(shares)).toBe(1001);
+  });
+
+  it("[QP-QUIKSPL-350-2] gives the leftover unit of a 33.33/33.33/33.34 split to the largest remainder", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["A", "B", "C"],
+      splitType: "percent",
+      splitDetails: { A: 33.33, B: 33.33, C: 33.34 },
+    });
+    expect(shares).toEqual([333, 333, 334]);
+    expect(sum(shares)).toBe(1000);
+  });
+
+  it("[QP-QUIKSPL-350-3] keeps group balances at zero after a percentage split that does not divide evenly", () => {
+    const group = createGroup("g1", "Trip", [
+      { id: "A", name: "Ann" },
+      { id: "B", name: "Ben" },
+      { id: "C", name: "Cal" },
+    ]);
+    addExpense(group, {
+      amountMinor: 1000,
+      participants: ["A", "B", "C"],
+      paidBy: "A",
+      splitType: "percent",
+      splitDetails: { A: 33.33, B: 33.33, C: 33.34 },
+    });
+    const balances = computeBalances(group);
+    expect(sum(Object.values(balances))).toBe(0);
   });
 });

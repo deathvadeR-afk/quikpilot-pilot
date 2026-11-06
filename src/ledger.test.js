@@ -12,6 +12,7 @@ import {
   updateExpense,
 } from "./ledger.js";
 import { ValidationError } from "./validation.js";
+import { restoreExpense } from "./ledger.js";
 
 function group() {
   return createGroup("g", "Test", [
@@ -137,6 +138,43 @@ describe("deleteExpense", () => {
     deleteExpense(g, "exp_1");
     expect(() => deleteExpense(g, "exp_1")).toThrow("already deleted");
     expect(() => deleteExpense(g, "exp_9")).toThrow("Expense not found");
+  });
+});
+
+describe("restoreExpense", () => {
+  it("[QP-QUIKSPL-358-1] Restores a deleted expense with deletedAt removed and restoredAt set", () => {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 900, paidBy: "u1", participants: ["u1"] });
+    deleteExpense(g, "exp_1");
+    const restored = restoreExpense(g, "exp_1");
+    expect(restored.deletedAt).toBeUndefined();
+    expect(restored.restoredAt).toBeTruthy();
+    expect(new Date(restored.restoredAt).toISOString()).toBe(restored.restoredAt);
+  });
+
+  it("[QP-QUIKSPL-358-2] Restored expense is counted in balances and listed again", () => {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 900, paidBy: "u1", participants: ["u1", "u2", "u3"] });
+    deleteExpense(g, "exp_1");
+    expect(computeBalances(g)).toEqual({ u1: 0, u2: 0, u3: 0 });
+    restoreExpense(g, "exp_1");
+    const b = computeBalances(g);
+    expect(b.u1).toBe(600);
+    expect(b.u2).toBe(-300);
+    expect(g.expenses.filter((e) => !e.deletedAt).map((e) => e.id)).toEqual(["exp_1"]);
+  });
+
+  it("[QP-QUIKSPL-358-3] Refuses to restore an expense that is not deleted", () => {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 900, paidBy: "u1", participants: ["u1"] });
+    expect(() => restoreExpense(g, "exp_1")).toThrow(ValidationError);
+    expect(() => restoreExpense(g, "exp_1")).toThrow("This expense is not deleted.");
+  });
+
+  it("[QP-QUIKSPL-358-4] Refuses to restore an expense id that does not exist", () => {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 900, paidBy: "u1", participants: ["u1"] });
+    expect(() => restoreExpense(g, "exp_9")).toThrow("Expense not found.");
   });
 });
 

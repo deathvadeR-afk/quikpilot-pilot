@@ -12,6 +12,8 @@ import {
   updateExpense,
 } from "./ledger.js";
 import { ValidationError } from "./validation.js";
+import { restoreExpense } from "./ledger.js";
+import { listExpenses } from "./history.js";
 
 function group() {
   return createGroup("g", "Test", [
@@ -193,5 +195,64 @@ describe("members", () => {
 
   it("will not remove someone who is not in the group", () => {
     expect(() => removeMember(group(), "zz")).toThrow("not in this group");
+  });
+});
+
+describe("restoreExpense", () => {
+  it("[QP-QUIKSPL-359-1] Restores a deleted expense with deletedAt removed and restoredAt set", () => {
+    const g = group();
+    addExpense(g, { description: "Team dinner", amountMinor: 900, paidBy: "u1", participants: ["u1", "u2", "u3"] });
+    deleteExpense(g, "exp_1");
+    const restored = restoreExpense(g, "exp_1");
+    expect(restored.deletedAt).toBeFalsy();
+    expect(restored.restoredAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  });
+
+  it("[QP-QUIKSPL-359-2] Restored expense is back in balances and the expense list", () => {
+    const g = group();
+    addExpense(g, { description: "Team dinner", amountMinor: 900, paidBy: "u1", participants: ["u1", "u2", "u3"] });
+    deleteExpense(g, "exp_1");
+    expect(computeBalances(g).u1).toBe(0);
+    expect(listExpenses(g).items.map((e) => e.description)).not.toContain("Team dinner");
+    restoreExpense(g, "exp_1");
+    expect(computeBalances(g).u1).toBe(600);
+    expect(listExpenses(g).items.map((e) => e.description)).toContain("Team dinner");
+  });
+
+  it("[QP-QUIKSPL-359-3] Rejects restoring an expense that is not deleted", () => {
+    const g = group();
+    addExpense(g, { description: "Team dinner", amountMinor: 900, paidBy: "u1", participants: ["u1", "u2", "u3"] });
+    let err;
+    try {
+      restoreExpense(g, "exp_1");
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeInstanceOf(ValidationError);
+    expect(err.field).toBe("id");
+    expect(err.message).toBe("This expense is not deleted.");
+  });
+
+  it("[QP-QUIKSPL-359-4] Rejects restoring an expense id that does not exist", () => {
+    const g = group();
+    addExpense(g, { description: "Team dinner", amountMinor: 900, paidBy: "u1", participants: ["u1", "u2", "u3"] });
+    let err;
+    try {
+      restoreExpense(g, "exp_9");
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeInstanceOf(ValidationError);
+    expect(err.field).toBe("id");
+    expect(err.message).toBe("Expense not found.");
+  });
+
+  it("[QP-QUIKSPL-359-5] A user who may delete an expense may restore it", () => {
+    const g = group();
+    addExpense(g, { description: "Team dinner", amountMinor: 900, paidBy: "u1", participants: ["u1", "u2", "u3"] });
+    deleteExpense(g, "exp_1");
+    const restored = restoreExpense(g, "exp_1");
+    expect(restored.deletedAt).toBeFalsy();
+    expect(g.expenses[0].deletedAt).toBeFalsy();
   });
 });

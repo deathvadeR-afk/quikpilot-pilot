@@ -128,6 +128,11 @@ export function validateExpense(input, memberIds) {
 
   const category = validateCategory(input.category);
 
+  const note = input.note === undefined || input.note === null ? undefined : input.note;
+  if (note !== undefined && String(note).length > 200) {
+    throw new ValidationError("note", "Note must be 200 characters or fewer.");
+  }
+
   const currency =
     input.currency === undefined || input.currency === "" ? BASE_CURRENCY : String(input.currency).trim();
   if (currency.length !== 3) {
@@ -146,5 +151,6 @@ export function validateExpense(input, memberIds) {
     splitType,
     splitDetails,
     original: { amountMinor: originalMinor, currency },
+    ...(note === undefined ? {} : { note }),
   };
 }

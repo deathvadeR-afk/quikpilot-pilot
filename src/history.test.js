@@ -64,4 +64,27 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-345-2] shows only expenses whose description contains the search term", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    addExpense(g, { description: "Groceries at Corner Store", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-01T09:00:00.000Z" });
+    addExpense(g, { description: "Taxi to airport", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "travel", createdAt: "2026-10-02T09:00:00.000Z" });
+    addExpense(g, { description: "Corner Store snacks", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-03T09:00:00.000Z" });
+    const descriptions = listExpenses(g, { search: "Corner Store" }).items.map((e) => e.description);
+    expect(descriptions.sort()).toEqual(["Corner Store snacks", "Groceries at Corner Store"]);
+  });
+
+  it("[QP-QUIKSPL-345-3] does not show an expense that matches the term only by category", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "Ravi" }]);
+    addExpense(g, { description: "Taxi to airport", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "Transport", createdAt: "2026-10-01T09:00:00.000Z" });
+    const descriptions = listExpenses(g, { search: "Transport" }).items.map((e) => e.description);
+    expect(descriptions).not.toContain("Taxi to airport");
+  });
+
+  it("[QP-QUIKSPL-345-4] does not show an expense that matches the term only by member name", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "Ravi" }]);
+    addExpense(g, { description: "Taxi to airport", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "Transport", createdAt: "2026-10-01T09:00:00.000Z" });
+    const descriptions = listExpenses(g, { search: "Ravi" }).items.map((e) => e.description);
+    expect(descriptions).not.toContain("Taxi to airport");
+  });
 });

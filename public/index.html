@@ -210,6 +210,7 @@
           <div><label for="fFrom">From</label><input id="fFrom" type="date"></div>
           <div><label for="fTo">To</label><input id="fTo" type="date"></div>
         </div>
+        <input id="fSearch" type="search" placeholder="Search expenses" aria-label="Search expenses">
         <ul class="hist" id="history"></ul>
         <div class="foot">
           <div class="info" id="pageInfo"></div>
@@ -381,6 +382,7 @@ async function loadHistory(reset) {
   if ($("fCategory").value) q.set("category", $("fCategory").value);
   if ($("fFrom").value) q.set("from", $("fFrom").value);
   if ($("fTo").value) q.set("to", $("fTo").value);
+  if ($("fSearch").value) q.set("search", $("fSearch").value);
   const r = await fetch(`/api/groups/${current.id}/expenses?${q}`);
   if (!r.ok) {
     $("history").innerHTML = `<li class="empty" style="display:block">${sectionFailed("The expense list")}</li>`;
@@ -454,7 +456,7 @@ function updateHint() {
 
 document.querySelectorAll("#seg button").forEach((b) => { b.onclick = () => { splitType = b.dataset.type; renderSplitDetails(); }; });
 $("more").onclick = () => { page += 1; loadHistory(false); };
-["fCategory", "fFrom", "fTo"].forEach((id) => { $(id).onchange = () => loadHistory(true); });
+["fCategory", "fFrom", "fTo", "fSearch"].forEach((id) => { $(id).onchange = () => loadHistory(true); });
 ["amount", "currency"].forEach((id) => { $(id).oninput = updateHint; });
 
 $("add").onclick = async () => {

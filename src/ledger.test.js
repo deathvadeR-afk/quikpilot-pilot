@@ -12,6 +12,8 @@ import {
   updateExpense,
 } from "./ledger.js";
 import { ValidationError } from "./validation.js";
+import { restoreExpense } from "./ledger.js";
+import { listExpenses, listRecentlyDeleted } from "./history.js";
 
 function group() {
   return createGroup("g", "Test", [
@@ -193,5 +195,18 @@ describe("members", () => {
 
   it("will not remove someone who is not in the group", () => {
     expect(() => removeMember(group(), "zz")).toThrow("not in this group");
+  });
+});
+
+describe("restoreExpense", () => {
+  it("[QP-QUIKSPL-347-4] returns a restored expense to the group's expense list", () => {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 900, paidBy: "u1", participants: ["u1", "u2"] });
+    deleteExpense(g, "exp_1");
+    g.expenses[0].deletedAt = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+    expect(listRecentlyDeleted(g).map((e) => e.description)).toEqual(["Dinner"]);
+    restoreExpense(g, "exp_1");
+    expect(listExpenses(g).items.map((e) => e.description)).toEqual(["Dinner"]);
+    expect(listRecentlyDeleted(g)).toEqual([]);
   });
 });

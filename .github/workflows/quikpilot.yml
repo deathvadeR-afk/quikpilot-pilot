@@ -83,6 +83,9 @@ jobs:
       CALLBACK_URL: ${{ inputs.callback_url }}
       PACKET_URL: ${{ inputs.packet_url }}
       RUN_ID: ${{ inputs.run_id }}
+      # QUIKTR-2325/2326 trial (8 Nov 2026): each part of a feature must be built before a pull request, and a feature
+      # needing a database change stops before any code. Remove after the trial.
+      QUIKPILOT_PARTS_CHECK: "on"
       # QUIKTR-1084 — only meaningful when MODE is "readiness_check"; the
       # runner's own entrypoint (index.ts) is what branches on MODE, not this
       # file, so an ordinary pilot run (MODE unset -> "run") ignores these.

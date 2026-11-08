@@ -64,4 +64,39 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-348-1] Shows an expense's note to another member of the group", () => {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, {
+      description: "Team dinner",
+      amountMinor: 900,
+      paidBy: "u1",
+      participants: ["u1", "u2"],
+      note: "Client dinner, Q3 planning",
+      createdAt: "2026-10-01T09:00:00.000Z",
+    });
+    const result = listExpenses(g, { memberId: "u2" });
+    const dinner = result.items.find((e) => e.description === "Team dinner");
+    expect(dinner.note).toBe("Client dinner, Q3 planning");
+  });
+
+  it("[QP-QUIKSPL-348-5] Does not show a note to someone outside the group", () => {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, {
+      description: "Team dinner",
+      amountMinor: 900,
+      paidBy: "u1",
+      participants: ["u1", "u2"],
+      note: "Client dinner, Q3 planning",
+      createdAt: "2026-10-01T09:00:00.000Z",
+    });
+    const result = listExpenses(g, { memberId: "u3" });
+    expect(JSON.stringify(result)).not.toContain("Client dinner, Q3 planning");
+  });
 });

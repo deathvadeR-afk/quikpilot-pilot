@@ -133,3 +133,22 @@ describe("validateExpense split", () => {
     ).toThrow("Shares must be whole numbers greater than zero.");
   });
 });
+
+describe("validateExpense note", () => {
+  const base = { description: "Test", amount: "100.00", paidBy: "u1", participants: ["u1", "u2"] };
+
+  it("[QP-QUIKSPL-348-2] Saves a note of exactly 200 characters with its expense", () => {
+    const note = "x".repeat(200);
+    const result = validateExpense({ ...base, note }, memberIds());
+    expect(result.note).toBe(note);
+  });
+
+  it("[QP-QUIKSPL-348-3] Refuses a note of 201 characters and saves no expense", () => {
+    expect(() => validateExpense({ ...base, note: "x".repeat(201) }, memberIds())).toThrow(ValidationError);
+  });
+
+  it("[QP-QUIKSPL-348-4] Saves an expense added without a note", () => {
+    const result = validateExpense(base, memberIds());
+    expect(result.note).toBeUndefined();
+  });
+});

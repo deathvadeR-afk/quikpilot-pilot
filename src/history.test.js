@@ -62,6 +62,36 @@ describe("listExpenses", () => {
   });
 
   it("falls back to a page size of 10", () => {
-    expect(listExpenses(group()).pageSize).toBe(10);
+    expect(listExpenses(group()).pageSize).toBe(20);
+  });
+
+  it("[QP-QUIKSPL-346-1] reports a page size of 20 when no page size is given", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }, { id: "u2", name: "B" }]);
+    for (let i = 1; i <= 25; i++) {
+      addExpense(g, {
+        description: `E${i}`,
+        amountMinor: 100,
+        paidBy: "u1",
+        participants: ["u1", "u2"],
+        category: "food",
+        createdAt: `2026-10-${String(i).padStart(2, "0")}T09:00:00.000Z`,
+      });
+    }
+    expect(listExpenses(g).pageSize).toBe(20);
+  });
+
+  it("[QP-QUIKSPL-346-3] uses a caller's page size of 15 instead of the default", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }, { id: "u2", name: "B" }]);
+    for (let i = 1; i <= 25; i++) {
+      addExpense(g, {
+        description: `E${i}`,
+        amountMinor: 100,
+        paidBy: "u1",
+        participants: ["u1", "u2"],
+        category: "food",
+        createdAt: `2026-10-${String(i).padStart(2, "0")}T09:00:00.000Z`,
+      });
+    }
+    expect(listExpenses(g, { pageSize: 15 }).pageSize).toBe(15);
   });
 });

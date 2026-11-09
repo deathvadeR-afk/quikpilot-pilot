@@ -19,6 +19,17 @@ export function createGroup(id, name, members) {
 
 export const isActive = (expense) => !expense.deletedAt;
 
+/** A deleted expense can be restored for this long after its deletion. */
+export const RESTORE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** True when the expense is deleted and its deletion falls within the restore window. */
+export function isRecentlyDeleted(expense, now = Date.now()) {
+  if (!expense.deletedAt) return false;
+  const deletedAt = Date.parse(expense.deletedAt);
+  if (Number.isNaN(deletedAt)) return false;
+  return now - deletedAt <= RESTORE_WINDOW_MS;
+}
+
 export function addExpense(group, expense) {
   if (expense.amountMinor < 0) {
     throw new ValidationError("amount", "Negative numbers are not allowed");
@@ -59,12 +70,13 @@ export function updateExpense(group, id, changes) {
   return expense;
 }
 
-export function deleteExpense(group, id) {
+export function deleteExpense(group, id, deletedBy) {
   const expense = findExpense(group, id);
   if (!isActive(expense)) {
     throw new ValidationError("id", "This expense is already deleted.");
   }
   expense.deletedAt = new Date().toISOString();
+  expense.deletedBy = deletedBy ?? null;
   return expense;
 }
 

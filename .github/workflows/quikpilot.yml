@@ -86,6 +86,9 @@ jobs:
       # QUIKTR-2325/2326 trial (8 Nov 2026): each part of a feature must be built before a pull request, and a feature
       # needing a database change stops before any code. Remove after the trial.
       QUIKPILOT_PARTS_CHECK: "on"
+      # QUIKTR-2442 trial (10 Nov 2026): a feature run may propose an add-only set-up update to an existing test its change
+      # broke, proven on the whole suite, for a person to approve. Remove after the trial.
+      QUIKPILOT_FEATURE_TEST_UPDATES: "on"
       # QUIKTR-1084 — only meaningful when MODE is "readiness_check"; the
       # runner's own entrypoint (index.ts) is what branches on MODE, not this
       # file, so an ordinary pilot run (MODE unset -> "run") ignores these.

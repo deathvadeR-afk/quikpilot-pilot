@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { validateExpense, ValidationError } from "./validation.js";
+import { validateBudgetAmount } from "./validation.js";
 
 function memberIds() {
   return ["u1", "u2", "u3"];
@@ -131,5 +132,17 @@ describe("validateExpense split", () => {
     expect(() =>
       validateExpense({ ...base, splitType: "shares", splitDetails: { u1: 1.5, u2: 1 } }, memberIds()),
     ).toThrow("Shares must be whole numbers greater than zero.");
+  });
+});
+
+describe("validateBudgetAmount", () => {
+  it("[QP-QUIKSPL-378-2] Refuses a budget that is zero, negative, above the limit or not a number", () => {
+    for (const raw of [0, -5, "10000000.01", "abc"]) {
+      expect(() => validateBudgetAmount(raw)).toThrow(ValidationError);
+    }
+  });
+
+  it("[QP-QUIKSPL-378-3] Accepts a budget of exactly 10,000,000.00", () => {
+    expect(() => validateBudgetAmount("10000000.00")).not.toThrow();
   });
 });

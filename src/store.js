@@ -4,6 +4,9 @@ import { ValidationError, validateExpense } from "./validation.js";
 /** In-memory store. One process, one dataset — this is a pilot application. */
 const groups = new Map();
 
+/** One budget per category per group: { amountMinor, startMonth }, keyed by group id then category. */
+const budgets = new Map();
+
 /** Add an expense the way the API does (validated, converted, split), at a fixed moment. */
 function seedExpense(group, raw, createdAt) {
   const validated = validateExpense(raw, group.members.map((m) => m.id));
@@ -12,6 +15,7 @@ function seedExpense(group, raw, createdAt) {
 
 export function seed() {
   groups.clear();
+  budgets.clear();
 
   const trip = createGroup("g1", "Goa trip", [
     { id: "u1", name: "Aditi" },
@@ -64,6 +68,22 @@ export function seed() {
   groups.set(cricket.id, cricket);
 
   return groups;
+}
+
+/** Set a group's budget for a category from `startMonth` (YYYY-MM) onwards, replacing any earlier one. */
+export function setBudget(groupId, category, amountMinor, startMonth) {
+  if (!budgets.has(groupId)) budgets.set(groupId, new Map());
+  budgets.get(groupId).set(category, { amountMinor, startMonth });
+}
+
+/** Remove a group's budget for a category. */
+export function clearBudget(groupId, category) {
+  budgets.get(groupId)?.delete(category);
+}
+
+/** A group's budgets, one per category: { category, amountMinor, startMonth }. */
+export function listBudgets(groupId) {
+  return [...(budgets.get(groupId)?.entries() ?? [])].map(([category, b]) => ({ category, ...b }));
 }
 
 export function listGroups() {

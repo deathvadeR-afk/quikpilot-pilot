@@ -148,3 +148,22 @@ export function validateExpense(input, memberIds) {
     original: { amountMinor: originalMinor, currency },
   };
 }
+
+/** The largest budget a category can be given, in the user-facing amount. */
+export const BUDGET_LIMIT = "10000000.00";
+
+/**
+ * Validate a category budget amount (form and API share this rule).
+ * Refuses zero, negative, non-numeric and amounts above BUDGET_LIMIT.
+ * Returns the amount in integer minor units.
+ */
+export function validateBudgetAmount(raw) {
+  const minor = toMinor(raw);
+  if (minor === null || minor <= 0) {
+    throw new ValidationError("amount", "A budget must be a number greater than zero.");
+  }
+  if (minor > toMinor(BUDGET_LIMIT)) {
+    throw new ValidationError("amount", `A budget cannot be more than ${BUDGET_LIMIT}.`);
+  }
+  return minor;
+}

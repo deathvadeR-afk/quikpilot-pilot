@@ -195,3 +195,22 @@ describe("members", () => {
     expect(() => removeMember(group(), "zz")).toThrow("not in this group");
   });
 });
+
+describe("balances after a percentage split", () => {
+  it("[QP-QUIKSPL-379-4] leaves group balances summing to zero after a percentage split with leftover units", () => {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, {
+      description: "Lunch",
+      amountMinor: 1001,
+      paidBy: "u1",
+      participants: ["u1", "u2"],
+      splitType: "percent",
+      splitDetails: { u1: 50, u2: 50 },
+    });
+    const total = Object.values(computeBalances(g)).reduce((a, b) => a + b, 0);
+    expect(total).toBe(0);
+  });
+});

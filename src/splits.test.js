@@ -68,4 +68,37 @@ describe("computeShares", () => {
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
   });
+
+  it("[QP-QUIKSPL-379-1] splits 10.01 at 50/50 into 5.01 and 5.00 that sum to 10.01", () => {
+    const shares = computeShares({
+      amountMinor: 1001,
+      participants: ["a", "b"],
+      splitType: "percent",
+      splitDetails: { a: 50, b: 50 },
+    });
+    expect(shares[0]).toBe(501);
+    expect(shares[1]).toBe(500);
+    expect(sum(shares)).toBe(1001);
+  });
+
+  it("[QP-QUIKSPL-379-2] splits 10.00 at 33.33/33.33/33.34 into 3.33, 3.33 and 3.34 that sum to 10.00", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants,
+      splitType: "percent",
+      splitDetails: { a: 33.33, b: 33.33, c: 33.34 },
+    });
+    expect(shares).toEqual([333, 333, 334]);
+    expect(sum(shares)).toBe(1000);
+  });
+
+  it("[QP-QUIKSPL-379-3] leaves a percentage split that divides cleanly unchanged", () => {
+    const shares = computeShares({
+      amountMinor: 20000,
+      participants,
+      splitType: "percent",
+      splitDetails: { a: 50, b: 30, c: 20 },
+    });
+    expect(shares).toEqual([10000, 6000, 4000]);
+  });
 });

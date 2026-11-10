@@ -12,6 +12,7 @@ import {
   updateExpense,
 } from "./ledger.js";
 import { ValidationError } from "./validation.js";
+import { computeShares } from "./splits.js";
 
 function group() {
   return createGroup("g", "Test", [
@@ -165,6 +166,38 @@ describe("updateExpense", () => {
     expect(() => updateExpense(g, "exp_1", { amountMinor: -5 })).toThrow(ValidationError);
     deleteExpense(g, "exp_1");
     expect(() => updateExpense(g, "exp_1", { description: "x" })).toThrow("deleted expense cannot be edited");
+  });
+
+  it("[QP-QUIKSPL-377-1] scales two exact shares in proportion when the amount doubles", () => {
+    const g = group();
+    addExpense(g, { description: "Split", amountMinor: 1000, paidBy: "u1", participants: ["u1", "u2"], splitType: "exact", splitDetails: { u1: 600, u2: 400 } });
+    updateExpense(g, "exp_1", { amountMinor: 2000 });
+    expect(computeShares(g.expenses[0])).toEqual([1200, 800]);
+  });
+
+  it("[QP-QUIKSPL-377-2] gives the leftover minor unit to the earliest participant when remainders tie", () => {
+    const g = group();
+    addExpense(g, { description: "Split", amountMinor: 300, paidBy: "u1", participants: ["u1", "u2", "u3"], splitType: "exact", splitDetails: { u1: 100, u2: 100, u3: 100 } });
+    updateExpense(g, "exp_1", { amountMinor: 1000 });
+    expect(computeShares(g.expenses[0])).toEqual([334, 333, 333]);
+  });
+
+  it("[QP-QUIKSPL-377-3] keeps the shares summing to the new amount so balances net to zero", () => {
+    const g = group();
+    addExpense(g, { description: "Split", amountMinor: 1000, paidBy: "u1", participants: ["u1", "u2"], splitType: "exact", splitDetails: { u1: 600, u2: 400 } });
+    updateExpense(g, "exp_1", { amountMinor: 2000 });
+    const shares = computeShares(g.expenses[0]);
+    expect(shares.reduce((a, b) => a + b, 0)).toBe(2000);
+    const balances = computeBalances(g);
+    expect(Object.values(balances).reduce((a, b) => a + b, 0)).toBe(0);
+  });
+
+  it("[QP-QUIKSPL-377-4] rescales an exact split recorded in another currency to the new base-currency amount", () => {
+    const g = group();
+    addExpense(g, { description: "Foreign", amountMinor: 1000, paidBy: "u1", participants: ["u1", "u2"], splitType: "exact", splitDetails: { u1: 600, u2: 400 }, original: { amountMinor: 12, currency: "USD" } });
+    updateExpense(g, "exp_1", { amountMinor: 2000, original: { amountMinor: 24, currency: "USD" } });
+    const shares = computeShares(g.expenses[0]);
+    expect(shares.reduce((a, b) => a + b, 0)).toBe(2000);
   });
 });
 

@@ -68,4 +68,39 @@ describe("computeShares", () => {
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
   });
+
+  it("[QP-QUIKSPL-376-1] splits 10.01 at 50/50 into 5.01 and 5.00 with the earliest participant getting the extra unit", () => {
+    const shares = computeShares({
+      amountMinor: 1001,
+      participants: ["p1", "p2"],
+      splitType: "percent",
+      splitDetails: { p1: 50, p2: 50 },
+    });
+    expect(shares).toEqual([501, 500]);
+    expect(sum(shares)).toBe(1001);
+  });
+
+  it("[QP-QUIKSPL-376-2] gives the leftover unit of a 33.33/33.33/33.34 split to the largest remainder", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["p1", "p2", "p3"],
+      splitType: "percent",
+      splitDetails: { p1: 33.33, p2: 33.33, p3: 33.34 },
+    });
+    expect(shares).toEqual([333, 333, 334]);
+    expect(sum(shares)).toBe(1000);
+  });
+
+  it("[QP-QUIKSPL-376-3] keeps group balances at zero after a 10.01 expense split 50/50", () => {
+    const shares = computeShares({
+      amountMinor: 1001,
+      participants: ["p1", "p2"],
+      splitType: "percent",
+      splitDetails: { p1: 50, p2: 50 },
+    });
+    const paid = 1001;
+    const balances = shares.map((owed, i) => (i === 0 ? paid : 0) - owed);
+    expect(balances).toEqual([500, -500]);
+    expect(sum(balances)).toBe(0);
+  });
 });

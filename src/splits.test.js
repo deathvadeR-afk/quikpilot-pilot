@@ -69,3 +69,27 @@ describe("computeShares", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
   });
 });
+
+describe("computeShares percent rounding", () => {
+  it("[QP-QUIKSPL-394-1] Percentage split of 10.01 at 50/50 totals 10.01 with the earlier participant taking the extra unit", () => {
+    const shares = computeShares({
+      amountMinor: 1001,
+      participants: ["u1", "u2"],
+      splitType: "percent",
+      splitDetails: { u1: 50, u2: 50 },
+    });
+    expect(shares).toEqual([501, 500]);
+    expect(sum(shares)).toBe(1001);
+  });
+
+  it("[QP-QUIKSPL-394-2] Percentage split of 10.00 at 33.33/33.33/33.34 gives 3.33, 3.33 and 3.34 totalling 10.00", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["u1", "u2", "u3"],
+      splitType: "percent",
+      splitDetails: { u1: 33.33, u2: 33.33, u3: 33.34 },
+    });
+    expect(shares).toEqual([333, 333, 334]);
+    expect(sum(shares)).toBe(1000);
+  });
+});

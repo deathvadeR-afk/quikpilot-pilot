@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { computeShares, weighted } from "./splits.js";
+import { addExpense, computeBalances, createGroup } from "./ledger.js";
 
 const sum = (parts) => parts.reduce((a, b) => a + b, 0);
 
@@ -67,5 +68,48 @@ describe("computeShares", () => {
 
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
+  });
+});
+
+describe("percentage splits with leftover units", () => {
+  it("[QP-QUIKSPL-388-1] distributes the leftover cent of a 50/50 percentage split to the earliest participant", () => {
+    const shares = computeShares({
+      amountMinor: 1001,
+      participants: ["a", "b"],
+      splitType: "percent",
+      splitDetails: { a: 50, b: 50 },
+    });
+    expect(shares).toEqual([501, 500]);
+    expect(sum(shares)).toBe(1001);
+  });
+
+  it("[QP-QUIKSPL-388-2] distributes the leftover minor unit of a 33.33/33.33/33.34 split to the largest remainder", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["a", "b", "c"],
+      splitType: "percent",
+      splitDetails: { a: 33.33, b: 33.33, c: 33.34 },
+    });
+    expect(shares).toEqual([333, 333, 334]);
+    expect(sum(shares)).toBe(1000);
+  });
+});
+
+describe("balances after a percentage split", () => {
+  it("[QP-QUIKSPL-388-3] keeps group balances at zero after a non-clean percentage split", () => {
+    const g = createGroup("g", "Test", [
+      { id: "A", name: "A" },
+      { id: "B", name: "B" },
+    ]);
+    addExpense(g, {
+      description: "Lunch",
+      amountMinor: 1001,
+      paidBy: "A",
+      participants: ["A", "B"],
+      splitType: "percent",
+      splitDetails: { A: 50, B: 50 },
+    });
+    const total = Object.values(computeBalances(g)).reduce((a, b) => a + b, 0);
+    expect(total).toBe(0);
   });
 });

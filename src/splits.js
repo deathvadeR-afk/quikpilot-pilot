@@ -46,7 +46,12 @@ export function computeShares(expense) {
       return participants.map((p) => splitDetails[p]);
 
     case "percent":
-      return participants.map((p) => Math.round((amountMinor * splitDetails[p]) / 100));
+      // Percentages in hundredths (33.33 -> 3333) are integer weights summing to 10000,
+      // so weighted() keeps each whole-unit part and hands out leftovers by largest remainder.
+      return weighted(
+        amountMinor,
+        participants.map((p) => Math.round(splitDetails[p] * 100)),
+      );
 
     case "shares":
       return weighted(

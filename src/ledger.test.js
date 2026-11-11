@@ -195,3 +195,22 @@ describe("members", () => {
     expect(() => removeMember(group(), "zz")).toThrow("not in this group");
   });
 });
+
+describe("percentage splits", () => {
+  it("[QP-QUIKSPL-391-3] keeps group balances at zero after a percentage split that does not divide evenly", () => {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, {
+      description: "Odd split",
+      amountMinor: 1001,
+      paidBy: "u1",
+      participants: ["u1", "u2"],
+      splitType: "percent",
+      splitDetails: { u1: 50, u2: 50 },
+    });
+    const b = computeBalances(g);
+    expect(b.u1 + b.u2).toBe(0);
+  });
+});

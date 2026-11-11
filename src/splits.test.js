@@ -55,6 +55,38 @@ describe("computeShares", () => {
     expect(shares).toEqual([10000, 6000, 4000]);
   });
 
+  it("[QP-QUIKSPL-393-1] splits 10.01 50/50 into 5.01 and 5.00 so the shares total 10.01", () => {
+    const shares = computeShares({
+      amountMinor: 1001,
+      participants: ["a", "b"],
+      splitType: "percent",
+      splitDetails: { a: 50, b: 50 },
+    });
+    expect(shares).toEqual([501, 500]);
+    expect(sum(shares)).toBe(1001);
+  });
+
+  it("[QP-QUIKSPL-393-2] splits 10.00 across 33.33, 33.33 and 33.34 percent so the shares total 10.00", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants,
+      splitType: "percent",
+      splitDetails: { a: 33.33, b: 33.33, c: 33.34 },
+    });
+    expect(shares).toEqual([333, 333, 334]);
+    expect(sum(shares)).toBe(1000);
+  });
+
+  it("[QP-QUIKSPL-393-3] keeps the amounts of a percentage split that divides cleanly unchanged", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["a", "b"],
+      splitType: "percent",
+      splitDetails: { a: 25, b: 75 },
+    });
+    expect(shares).toEqual([250, 750]);
+  });
+
   it("divides by shares and keeps the parts summing to the total", () => {
     const shares = computeShares({
       amountMinor: 1001,

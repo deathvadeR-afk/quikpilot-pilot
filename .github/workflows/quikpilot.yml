@@ -125,7 +125,7 @@ jobs:
           restore-keys: quikpilot-deps-${{ runner.os }}-
 
       - name: Run QuikPilot
-        run: npx --yes @quikit/quikpilot-runner@9.3.0-rc.81
+        run: npx --yes @quikit/quikpilot-runner@9.3.0-rc.82
 
       - name: Save downloaded packages
         if: always() && steps.deps-cache.outputs.cache-hit != 'true'

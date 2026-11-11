@@ -166,6 +166,39 @@ describe("updateExpense", () => {
     deleteExpense(g, "exp_1");
     expect(() => updateExpense(g, "exp_1", { description: "x" })).toThrow("deleted expense cannot be edited");
   });
+
+  it("[QP-QUIKSPL-392-1] rescales both exact shares to the new total when the amount is raised", () => {
+    const g = group();
+    addExpense(g, { description: "Lunch", amountMinor: 1000, paidBy: "u1", participants: ["u1", "u2"], splitType: "exact", splitDetails: { u1: 600, u2: 400 } });
+    updateExpense(g, "exp_1", { amountMinor: 2000 });
+    expect(g.expenses[0].splitDetails.u1).toBe(1200);
+    expect(g.expenses[0].splitDetails.u2).toBe(800);
+  });
+
+  it("[QP-QUIKSPL-392-2] gives the leftover minor unit to the earliest participant when remainders tie", () => {
+    const g = group();
+    addExpense(g, { description: "Snacks", amountMinor: 300, paidBy: "u1", participants: ["u1", "u2", "u3"], splitType: "exact", splitDetails: { u1: 100, u2: 100, u3: 100 } });
+    updateExpense(g, "exp_1", { amountMinor: 1000 });
+    expect(g.expenses[0].splitDetails.u1).toBe(334);
+    expect(g.expenses[0].splitDetails.u2).toBe(333);
+    expect(g.expenses[0].splitDetails.u3).toBe(333);
+  });
+
+  it("[QP-QUIKSPL-392-3] gives the leftover minor unit to the largest remainder rather than the earliest participant", () => {
+    const g = group();
+    addExpense(g, { description: "Taxi", amountMinor: 300, paidBy: "u1", participants: ["u1", "u2"], splitType: "exact", splitDetails: { u1: 100, u2: 200 } });
+    updateExpense(g, "exp_1", { amountMinor: 1000 });
+    expect(g.expenses[0].splitDetails.u1).toBe(333);
+    expect(g.expenses[0].splitDetails.u2).toBe(667);
+  });
+
+  it("[QP-QUIKSPL-392-4] keeps the group's balances summing to zero after an exact-split amount edit", () => {
+    const g = group();
+    addExpense(g, { description: "Hotel", amountMinor: 1000, paidBy: "u1", participants: ["u2", "u3"], splitType: "exact", splitDetails: { u2: 600, u3: 400 } });
+    updateExpense(g, "exp_1", { amountMinor: 2000 });
+    const b = computeBalances(g);
+    expect(Object.values(b).reduce((a, x) => a + x, 0)).toBe(0);
+  });
 });
 
 describe("members", () => {

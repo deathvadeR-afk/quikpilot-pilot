@@ -91,6 +91,25 @@ describe("addExpense amount validation", () => {
   });
 });
 
+describe("percentage split balances", () => {
+  it("[QP-QUIKSPL-395-3] keeps the group balances at zero after a percentage split expense", () => {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, {
+      description: "Taxi",
+      amountMinor: 1001,
+      paidBy: "u1",
+      participants: ["u1", "u2"],
+      splitType: "percent",
+      splitDetails: { u1: 50, u2: 50 },
+    });
+    const total = Object.values(computeBalances(g)).reduce((a, b) => a + b, 0);
+    expect(total).toBe(0);
+  });
+});
+
 describe("payments", () => {
   it("moves both balances towards zero", () => {
     const g = group();

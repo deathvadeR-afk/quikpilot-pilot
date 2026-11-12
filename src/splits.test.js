@@ -68,4 +68,26 @@ describe("computeShares", () => {
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
   });
+
+  it("[QP-QUIKS-8-1] shares sum to the total when rounding leaves a unit short", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["u1", "u2", "u3"],
+      splitType: "percent",
+      splitDetails: { u1: 33.33, u2: 33.33, u3: 33.34 },
+    });
+    expect(shares).toEqual([333, 333, 334]);
+    expect(sum(shares)).toBe(1000);
+  });
+
+  it("[QP-QUIKS-8-2] keeps shares that already divide the total cleanly", () => {
+    const shares = computeShares({
+      amountMinor: 1000,
+      participants: ["u1", "u2"],
+      splitType: "percent",
+      splitDetails: { u1: 50, u2: 50 },
+    });
+    expect(shares).toEqual([500, 500]);
+    expect(sum(shares)).toBe(1000);
+  });
 });

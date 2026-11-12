@@ -61,7 +61,7 @@ describe("listExpenses", () => {
     expect(result.pageSize).toBe(MAX_PAGE_SIZE);
   });
 
-  it("falls back to a page size of 10", () => {
-    expect(listExpenses(group()).pageSize).toBe(10);
+  it("falls back to a page size of 20", () => {
+    expect(listExpenses(group()).pageSize).toBe(20);
   });
 });

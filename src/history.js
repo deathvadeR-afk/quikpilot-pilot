@@ -16,7 +16,7 @@ export const MAX_PAGE_SIZE = 50;
 export function listExpenses(group, options = {}) {
   const { memberId, category, from, to } = options;
   const page = Math.max(1, Math.floor(Number(options.page) || 1));
-  const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(Number(options.pageSize) || 10)));
+  const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(Number(options.pageSize) || 20)));
 
   let items = group.expenses.filter(isActive);
   if (memberId) items = items.filter((e) => e.paidBy === memberId || e.participants.includes(memberId));
@@ -29,7 +29,7 @@ export function listExpenses(group, options = {}) {
   const start = (page - 1) * pageSize;
   const end = start + pageSize;
   return {
-    items: items.slice(start, end + 1),
+    items: items.slice(start, end),
     page,
     pageSize,
     total: items.length,

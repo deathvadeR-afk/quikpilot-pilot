@@ -83,12 +83,6 @@ jobs:
       CALLBACK_URL: ${{ inputs.callback_url }}
       PACKET_URL: ${{ inputs.packet_url }}
       RUN_ID: ${{ inputs.run_id }}
-      # QUIKTR-2325/2326 trial (8 Nov 2026): each part of a feature must be built before a pull request, and a feature
-      # needing a database change stops before any code. Remove after the trial.
-      QUIKPILOT_PARTS_CHECK: "on"
-      # QUIKTR-2442 trial (10 Nov 2026): a feature run may propose an add-only set-up update to an existing test its change
-      # broke, proven on the whole suite, for a person to approve. Remove after the trial.
-      QUIKPILOT_FEATURE_TEST_UPDATES: "on"
       # QUIKTR-1084 — only meaningful when MODE is "readiness_check"; the
       # runner's own entrypoint (index.ts) is what branches on MODE, not this
       # file, so an ordinary pilot run (MODE unset -> "run") ignores these.
@@ -99,14 +93,13 @@ jobs:
       TEST_CMD: ${{ inputs.test_cmd }}
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          package-manager-cache: false
           node-version: "24"
       - name: Customer setup steps
         if: hashFiles('.github/actions/quikpilot-setup/action.yml') != ''
@@ -125,7 +118,7 @@ jobs:
           restore-keys: quikpilot-deps-${{ runner.os }}-
 
       - name: Run QuikPilot
-        run: npx --yes @quikit/quikpilot-runner@9.3.0-rc.86
+        run: npx --yes @quikit/quikpilot-runner@9.3.0-rc.48
 
       - name: Save downloaded packages
         if: always() && steps.deps-cache.outputs.cache-hit != 'true'
@@ -140,7 +133,7 @@ jobs:
 
       - name: Keep the files of a failed run
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: quikpilot-failed-run
           path: quikpilot-failure/

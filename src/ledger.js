@@ -68,6 +68,24 @@ export function deleteExpense(group, id) {
   return expense;
 }
 
+/**
+ * Undo a soft delete. Only deletedAt is cleared and restoredAt is stamped; the
+ * amount, payer, participants and split stay as they were. The actor must be a
+ * member of the group, and that is checked before the expense is looked up.
+ */
+export function restoreExpense(group, id, actorId) {
+  if (!group.members.some((m) => m.id === actorId)) {
+    throw new ValidationError("actorId", "Only a member of this group can restore an expense.");
+  }
+  const expense = findExpense(group, id);
+  if (isActive(expense)) {
+    throw new ValidationError("id", "This expense is not deleted.");
+  }
+  delete expense.deletedAt;
+  expense.restoredAt = new Date().toISOString();
+  return expense;
+}
+
 /** Record that `from` has paid `to` outside the app, which moves both balances towards zero. */
 export function recordPayment(group, { from, to, amountMinor }) {
   const ids = group.members.map((m) => m.id);

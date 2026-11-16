@@ -10,6 +10,7 @@ import {
   deleteExpense,
   recordPayment,
   removeMember,
+  restoreExpense,
   settleUp,
   updateExpense,
 } from "./ledger.js";
@@ -81,6 +82,17 @@ export const app = createServer(async (req, res) => {
       if (body === null) return json(res, 400, { error: "Body must be valid JSON." });
       const group = addGroup(body.name, body.members);
       return json(res, 201, { id: group.id, name: group.name, members: group.members });
+    }
+
+    // Restore a soft-deleted expense. The caller's member id is not available on
+    // requests in this code, so the actor is null and every call is refused until
+    // a person decides where it comes from.
+    const restore = match("api/groups/:id/expenses/:expenseId/restore", parts);
+    if (restore && method === "POST") {
+      const group = getGroup(restore.id);
+      if (!group) return json(res, 404, { error: "Group not found." });
+      const restored = restoreExpense(group, restore.expenseId, null);
+      return json(res, 200, display(restored));
     }
 
     // Everything below is /api/groups/:id/...

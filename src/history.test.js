@@ -65,3 +65,51 @@ describe("listExpenses", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
 });
+
+function twelveExpenses() {
+  const g = createGroup("g12", "Twelve", [
+    { id: "u1", name: "A" },
+    { id: "u2", name: "B" },
+  ]);
+  for (let i = 1; i <= 12; i++) {
+    addExpense(g, {
+      description: `Expense ${i}`,
+      amountMinor: 100,
+      paidBy: "u1",
+      participants: ["u1", "u2"],
+      category: "food",
+      createdAt: `2026-10-${String(i).padStart(2, "0")}T09:00:00.000Z`,
+    });
+  }
+  return g;
+}
+
+describe("listExpenses paging of 12 expenses at page size 10", () => {
+  it("[QP-QUIKSPL-414-1] Page 1 of 12 expenses at page size 10 shows exactly 10 expenses", () => {
+    const result = listExpenses(twelveExpenses(), { page: 1, pageSize: 10 });
+    expect(result.items).toHaveLength(10);
+  });
+
+  it("[QP-QUIKSPL-414-2] Page 2 of 12 expenses at page size 10 shows the remaining 2 expenses", () => {
+    const result = listExpenses(twelveExpenses(), { page: 2, pageSize: 10 });
+    expect(result.items).toHaveLength(2);
+    expect(result.total).toBe(12);
+  });
+
+  it("[QP-QUIKSPL-414-3] Does not repeat the boundary expense on page 2 when paging 12 expenses by 10", () => {
+    const g = twelveExpenses();
+    const page1Ids = listExpenses(g, { page: 1, pageSize: 10 }).items.map((e) => e.id);
+    const page2Ids = listExpenses(g, { page: 2, pageSize: 10 }).items.map((e) => e.id);
+    expect(page1Ids.filter((id) => page2Ids.includes(id))).toHaveLength(0);
+  });
+
+  it("[QP-QUIKSPL-414-4] Pages 1 and 2 together contain all 12 expenses exactly once", () => {
+    const g = twelveExpenses();
+    const combinedIds = [
+      ...listExpenses(g, { page: 1, pageSize: 10 }).items,
+      ...listExpenses(g, { page: 2, pageSize: 10 }).items,
+    ].map((e) => e.id);
+    expect(combinedIds).toHaveLength(12);
+    expect(new Set(combinedIds).size).toBe(12);
+  });
+});

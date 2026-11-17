@@ -12,6 +12,7 @@ import {
   updateExpense,
 } from "./ledger.js";
 import { ValidationError } from "./validation.js";
+import { restoreExpense } from "./ledger.js";
 
 function group() {
   return createGroup("g", "Test", [
@@ -193,5 +194,55 @@ describe("members", () => {
 
   it("will not remove someone who is not in the group", () => {
     expect(() => removeMember(group(), "zz")).toThrow("not in this group");
+  });
+});
+
+describe("restoreExpense", () => {
+  it("[QP-QUIKS-11-12] clears the deleted mark when restoreExpense is called on a deleted expense", () => {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 900, paidBy: "u1", participants: ["u1", "u2", "u3"] });
+    deleteExpense(g, "exp_1");
+    restoreExpense(g, "exp_1");
+    expect(g.expenses[0].deletedAt).toBeFalsy();
+    expect(g.expenses).toHaveLength(1);
+  });
+
+  it("[QP-QUIKS-11-13] counts the restored expense in balances and settle-up as before the delete", () => {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 900, paidBy: "u1", participants: ["u1", "u2", "u3"] });
+    addExpense(g, { description: "Taxi", amountMinor: 600, paidBy: "u2", participants: ["u1", "u2", "u3"] });
+    const balancesBefore = computeBalances(g);
+    const settleBefore = settleUp(balancesBefore);
+    deleteExpense(g, "exp_2");
+    restoreExpense(g, "exp_2");
+    const balancesAfter = computeBalances(g);
+    expect(balancesAfter).toEqual(balancesBefore);
+    expect(settleUp(balancesAfter)).toEqual(settleBefore);
+  });
+
+  it("[QP-QUIKS-11-14] refuses to restore an expense that is not deleted and leaves it unchanged", () => {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 900, paidBy: "u1", participants: ["u1"] });
+    expect(() => restoreExpense(g, "exp_1")).toThrow(ValidationError);
+    expect(g.expenses[0].deletedAt).toBeFalsy();
+  });
+
+  it("[QP-QUIKS-11-15] refuses to restore an expense id that does not exist", () => {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 900, paidBy: "u1", participants: ["u1"] });
+    const before = JSON.stringify(g.expenses);
+    expect(() => restoreExpense(g, "exp_9")).toThrow(ValidationError);
+    expect(JSON.stringify(g.expenses)).toBe(before);
+  });
+
+  it("[QP-QUIKS-11-16] lets a member who did not delete the expense restore it", () => {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Dinner", amountMinor: 900, paidBy: "u1", participants: ["u1", "u2"] });
+    deleteExpense(g, "exp_1");
+    restoreExpense(g, "exp_1");
+    expect(g.expenses[0].deletedAt).toBeFalsy();
   });
 });

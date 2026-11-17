@@ -68,4 +68,37 @@ describe("computeShares", () => {
   it("rejects an unknown split type", () => {
     expect(() => computeShares({ amountMinor: 100, participants, splitType: "random" })).toThrow("Unknown split type");
   });
+
+  it("[QP-QUIKS-8-5] stores percentage shares that sum to the expense amount when the percentages use two decimals", () => {
+    const shares = computeShares({
+      amountMinor: 100,
+      participants: ["Ana", "Ben", "Cy"],
+      splitType: "percent",
+      splitDetails: { Ana: 33.33, Ben: 33.33, Cy: 33.34 },
+    });
+    expect(shares).toEqual([33, 33, 34]);
+    expect(sum(shares)).toBe(100);
+  });
+
+  it("[QP-QUIKS-8-6] stores percentage shares that sum to the expense amount when two shares are not whole units", () => {
+    const shares = computeShares({
+      amountMinor: 100,
+      participants: ["Ana", "Ben"],
+      splitType: "percent",
+      splitDetails: { Ana: 33.33, Ben: 66.67 },
+    });
+    expect(shares).toEqual([33, 67]);
+    expect(sum(shares)).toBe(100);
+  });
+
+  it("[QP-QUIKS-8-7] gives the leftover minor unit to the earliest participant when remainders tie", () => {
+    const shares = computeShares({
+      amountMinor: 1,
+      participants: ["Ana", "Ben"],
+      splitType: "percent",
+      splitDetails: { Ana: 50, Ben: 50 },
+    });
+    expect(shares).toEqual([1, 0]);
+    expect(sum(shares)).toBe(1);
+  });
 });

@@ -65,3 +65,45 @@ describe("listExpenses", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
 });
+
+function groupOfTwelve() {
+  const g = createGroup("g12", "Twelve", [
+    { id: "u1", name: "A" },
+    { id: "u2", name: "B" },
+  ]);
+  for (let day = 1; day <= 12; day++) {
+    addExpense(g, {
+      description: `Expense ${day}`,
+      amountMinor: 100,
+      paidBy: "u1",
+      participants: ["u1", "u2"],
+      category: "food",
+      createdAt: `2026-10-${String(day).padStart(2, "0")}T09:00:00.000Z`,
+    });
+  }
+  return g;
+}
+
+describe("listExpenses paging", () => {
+  it("[QP-QUIKSPL-418-1] Page 1 of 12 expenses at page size 10 shows exactly 10 expenses", () => {
+    const result = listExpenses(groupOfTwelve(), { page: 1, pageSize: 10 });
+    expect(result.items).toHaveLength(10);
+  });
+
+  it("[QP-QUIKSPL-418-2] Pages 1 and 2 together show all 12 expenses with none repeated", () => {
+    const g = groupOfTwelve();
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 }).items.map((e) => e.id);
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 }).items.map((e) => e.id);
+    expect(page2).toHaveLength(2);
+    expect(page2.filter((id) => page1.includes(id))).toEqual([]);
+    expect([...page1, ...page2]).toHaveLength(12);
+    expect(new Set([...page1, ...page2]).size).toBe(12);
+  });
+
+  it("[QP-QUIKSPL-418-3] Every page at page size 5 holds at most 5 expenses", () => {
+    const g = groupOfTwelve();
+    expect(listExpenses(g, { page: 1, pageSize: 5 }).items).toHaveLength(5);
+    expect(listExpenses(g, { page: 2, pageSize: 5 }).items).toHaveLength(5);
+    expect(listExpenses(g, { page: 3, pageSize: 5 }).items).toHaveLength(2);
+  });
+});

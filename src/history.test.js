@@ -64,4 +64,56 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  describe("paging a larger group", () => {
+    function groupOf(count) {
+      const g = createGroup("g", "Big", [
+        { id: "u1", name: "A" },
+        { id: "u2", name: "B" },
+      ]);
+      const base = Date.UTC(2026, 9, 1);
+      for (let i = 1; i <= count; i++) {
+        addExpense(g, {
+          description: `E${i}`,
+          amountMinor: 100,
+          paidBy: "u1",
+          participants: ["u1", "u2"],
+          category: "food",
+          createdAt: new Date(base + (1000 - i) * 60000).toISOString(),
+        });
+      }
+      return g;
+    }
+
+    it("[QP-QUIKSPL-417-1] returns at most pageSize expenses on each full page", () => {
+      const g = groupOf(25);
+      expect(listExpenses(g, { page: 1, pageSize: 10 }).items).toHaveLength(10);
+      expect(listExpenses(g, { page: 2, pageSize: 10 }).items).toHaveLength(10);
+      expect(listExpenses(g, { page: 3, pageSize: 10 }).items).toHaveLength(5);
+    });
+
+    it("[QP-QUIKSPL-417-2] page 1 returns the first 10 of 12 expenses and page 2 returns the other 2", () => {
+      const g = groupOf(12);
+      const page1 = listExpenses(g, { page: 1, pageSize: 10 });
+      const page2 = listExpenses(g, { page: 2, pageSize: 10 });
+      expect(page1.items.map((e) => e.description)).toEqual(["E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "E9", "E10"]);
+      expect(page2.items.map((e) => e.description)).toEqual(["E11", "E12"]);
+    });
+
+    it("[QP-QUIKSPL-417-3] does not repeat the 11th expense on page 2 (reported defect)", () => {
+      const g = groupOf(12);
+      const page1 = listExpenses(g, { page: 1, pageSize: 10 });
+      const page2 = listExpenses(g, { page: 2, pageSize: 10 });
+      expect(page2.items.map((e) => e.description)).toEqual(["E11", "E12"]);
+      expect(page1.items.map((e) => e.description)).not.toContain("E11");
+      expect(page1.items.map((e) => e.description)).not.toContain("E12");
+    });
+
+    it("[QP-QUIKSPL-417-4] listing all pages returns every expense exactly once", () => {
+      const g = groupOf(25);
+      const all = [1, 2, 3].flatMap((page) => listExpenses(g, { page, pageSize: 10 }).items.map((e) => e.id));
+      expect(all).toHaveLength(25);
+      expect(new Set(all).size).toBe(25);
+    });
+  });
 });

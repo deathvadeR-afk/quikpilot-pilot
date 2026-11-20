@@ -12,6 +12,8 @@ import {
   updateExpense,
 } from "./ledger.js";
 import { ValidationError } from "./validation.js";
+import * as ledger from "./ledger.js";
+import { listExpenses } from "./history.js";
 
 function group() {
   return createGroup("g", "Test", [
@@ -210,5 +212,17 @@ describe("members", () => {
 
   it("will not remove someone who is not in the group", () => {
     expect(() => removeMember(group(), "zz")).toThrow("not in this group");
+  });
+});
+
+describe("restoreExpense", () => {
+  it("[QP-QUIKSPL-424-3] counts a restored expense in balances and the expense list again", () => {
+    const g = group();
+    addExpense(g, { description: "Team dinner", amountMinor: 900, paidBy: "u1", participants: ["u1", "u2", "u3"] });
+    const before = computeBalances(g);
+    deleteExpense(g, "exp_1");
+    ledger.restoreExpense(g, "exp_1");
+    expect(computeBalances(g)).toEqual(before);
+    expect(listExpenses(g).items.map((e) => e.description)).toContain("Team dinner");
   });
 });

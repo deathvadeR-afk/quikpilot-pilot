@@ -10,6 +10,7 @@ import {
   deleteExpense,
   recordPayment,
   removeMember,
+  restoreExpense,
   settleUp,
   updateExpense,
 } from "./ledger.js";
@@ -84,12 +85,12 @@ export const app = createServer(async (req, res) => {
     }
 
     // Everything below is /api/groups/:id/...
-    const base = match("api/groups/:id", parts) ?? match("api/groups/:id/:section", parts) ?? match("api/groups/:id/:section/:itemId", parts);
+    const base = match("api/groups/:id", parts) ?? match("api/groups/:id/:section", parts) ?? match("api/groups/:id/:section/:itemId", parts) ?? match("api/groups/:id/expenses/:itemId/:action", parts);
     if (base) {
       const group = getGroup(base.id);
       if (!group) return json(res, 404, { error: "Group not found." });
 
-      if (!base.section && method === "GET") {
+      if (!base.section && !base.action && method === "GET") {
         const balances = computeBalances(group);
         return json(res, 200, {
           ...group,
@@ -134,6 +135,10 @@ export const app = createServer(async (req, res) => {
           changes.original = { amountMinor: originalMinor, currency };
         }
         return json(res, 200, display(updateExpense(group, base.itemId, changes)));
+      }
+
+      if (base.action === "restore" && method === "POST") {
+        return json(res, 200, display(restoreExpense(group, base.itemId)));
       }
 
       if (base.section === "expenses" && base.itemId && method === "DELETE") {

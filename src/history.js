@@ -36,3 +36,14 @@ export function listExpenses(group, options = {}) {
     hasMore: end < items.length,
   };
 }
+
+const RECENTLY_DELETED_DAYS = 30;
+
+/**
+ * Expenses deleted within the last 30 days, whichever member deleted them.
+ * listExpenses is unchanged, so deleted expenses stay out of the main list.
+ */
+export function listRecentlyDeleted(group, options = {}) {
+  const cutoff = Date.now() - RECENTLY_DELETED_DAYS * 24 * 60 * 60 * 1000;
+  return group.expenses.filter((e) => e.deletedAt && Date.parse(e.deletedAt) >= cutoff);
+}

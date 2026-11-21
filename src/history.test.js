@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { addExpense, createGroup, deleteExpense } from "./ledger.js";
 import { listExpenses, MAX_PAGE_SIZE } from "./history.js";
+import { listRecentlyDeleted } from "./history.js";
 
 function group() {
   const g = createGroup("g", "Test", [
@@ -63,5 +64,38 @@ describe("listExpenses", () => {
 
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
+  });
+});
+
+describe("listRecentlyDeleted", () => {
+  const daysAgo = (n) => new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
+  const newGroup = () =>
+    createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+  const addDeleted = (g, description, days, paidBy = "u1") => {
+    const e = addExpense(g, { description, amountMinor: 900, paidBy, participants: ["u1", "u2"] });
+    e.deletedAt = daysAgo(days);
+    return e;
+  };
+
+  it("[QP-QUIKSPL-347-1] lists a recently deleted expense with a Restore button beside it", () => {
+    const g = newGroup();
+    addDeleted(g, "Dinner", 10);
+    expect(listRecentlyDeleted(g).map((e) => e.description)).toEqual(["Dinner"]);
+  });
+
+  it("[QP-QUIKSPL-347-2] leaves out a deletion older than 30 days", () => {
+    const g = newGroup();
+    addDeleted(g, "Recent", 10);
+    addDeleted(g, "Old", 45);
+    expect(listRecentlyDeleted(g).map((e) => e.description)).toEqual(["Recent"]);
+  });
+
+  it("[QP-QUIKSPL-347-3] lists a deletion made by another member of the group", () => {
+    const g = newGroup();
+    addDeleted(g, "Other", 5, "u2");
+    expect(listRecentlyDeleted(g).map((e) => e.description)).toContain("Other");
   });
 });

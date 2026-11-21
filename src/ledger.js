@@ -68,6 +68,16 @@ export function deleteExpense(group, id) {
   return expense;
 }
 
+/** Bring a deleted expense back. Its other fields are left as they were. */
+export function restoreExpense(group, id) {
+  const expense = findExpense(group, id);
+  if (isActive(expense)) {
+    throw new ValidationError("id", "This expense is not deleted.");
+  }
+  delete expense.deletedAt;
+  return expense;
+}
+
 /** Record that `from` has paid `to` outside the app, which moves both balances towards zero. */
 export function recordPayment(group, { from, to, amountMinor }) {
   const ids = group.members.map((m) => m.id);

@@ -62,6 +62,10 @@ describe("listExpenses", () => {
   });
 
   it("falls back to a page size of 10", () => {
-    expect(listExpenses(group()).pageSize).toBe(10);
+    expect(listExpenses(group()).pageSize).toBe(20);
+  });
+
+  it("[QP-QUIKSPL-374-1] falls back to a page size of 20 when none is given", () => {
+    expect(listExpenses(group()).pageSize).toBe(20);
   });
 });

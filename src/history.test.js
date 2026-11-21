@@ -61,7 +61,23 @@ describe("listExpenses", () => {
     expect(result.pageSize).toBe(MAX_PAGE_SIZE);
   });
 
-  it("falls back to a page size of 10", () => {
-    expect(listExpenses(group()).pageSize).toBe(10);
+  it("falls back to a page size of 20", () => {
+    expect(listExpenses(group()).pageSize).toBe(20);
+  });
+
+  it("[QP-QUIKSPL-398-3] Uses an explicit page size instead of the default", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 25; i++) {
+      addExpense(g, { description: `Item ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-01T09:${String(i).padStart(2, "0")}:00.000Z` });
+    }
+    expect(listExpenses(g, { pageSize: 15 }).pageSize).toBe(15);
+  });
+
+  it("[QP-QUIKSPL-398-2] Falls back to a page size of 20 when none is given", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 25; i++) {
+      addExpense(g, { description: `Item ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-01T09:${String(i).padStart(2, "0")}:00.000Z` });
+    }
+    expect(listExpenses(g).pageSize).toBe(20);
   });
 });

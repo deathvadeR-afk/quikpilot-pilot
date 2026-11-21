@@ -65,3 +65,43 @@ describe("listExpenses", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
 });
+
+function twelveExpenses() {
+  const g = createGroup("g", "Test", [
+    { id: "u1", name: "A" },
+    { id: "u2", name: "B" },
+  ]);
+  for (let i = 1; i <= 12; i++) {
+    addExpense(g, {
+      description: `Expense ${i}`,
+      amountMinor: 100,
+      paidBy: "u1",
+      participants: ["u1", "u2"],
+      category: "food",
+      createdAt: `2026-10-${String(i).padStart(2, "0")}T09:00:00.000Z`,
+    });
+  }
+  return g;
+}
+
+describe("listExpenses paging with 12 expenses", () => {
+  it("[QP-QUIKS-10-1] Page 1 holds at most the page size when 12 expenses exist", () => {
+    const result = listExpenses(twelveExpenses(), { page: 1, pageSize: 10 });
+    expect(result.items).toHaveLength(10);
+  });
+
+  it("[QP-QUIKS-10-2] No expense appears on both page 1 and page 2", () => {
+    const g = twelveExpenses();
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 }).items.map((e) => e.id);
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 }).items.map((e) => e.id);
+    expect(page1.filter((id) => page2.includes(id))).toEqual([]);
+  });
+
+  it("[QP-QUIKS-10-3] Page 2 holds the remaining expenses when 12 exist and page size is 10", () => {
+    const g = twelveExpenses();
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 }).items.map((e) => e.id);
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 }).items.map((e) => e.id);
+    expect(page2).toHaveLength(2);
+    expect(page2.filter((id) => page1.includes(id))).toEqual([]);
+  });
+});

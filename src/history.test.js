@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { addExpense, createGroup, deleteExpense } from "./ledger.js";
 import { listExpenses, MAX_PAGE_SIZE } from "./history.js";
+import { restoreExpense } from "./ledger.js";
 
 function group() {
   const g = createGroup("g", "Test", [
@@ -63,5 +64,20 @@ describe("listExpenses", () => {
 
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
+  });
+
+  it("[QP-QUIKSPL-401-3] A restored expense appears in the expense list once", () => {
+    const g = createGroup("g", "Test", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Kept", amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], createdAt: "2026-10-01T09:00:00.000Z" });
+    addExpense(g, { description: "Removed", amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], createdAt: "2026-10-02T09:00:00.000Z" });
+    deleteExpense(g, "exp_2");
+    restoreExpense(g, "exp_2");
+    const items = listExpenses(g).items;
+    expect(items).toHaveLength(2);
+    expect(items.filter((e) => e.description === "Removed")).toHaveLength(1);
+    expect(items.filter((e) => e.description === "Kept")).toHaveLength(1);
   });
 });

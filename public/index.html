@@ -200,6 +200,66 @@
         <h2 class="t" id="h-settle">Settle up</h2>
         <p class="sub">The fewest sensible payments to clear every balance.</p>
         <div class="pays" id="settlements"></div>
+<section class="budgets" id="budgets">
+  <h3>Budgets</h3>
+  <label>Month <input type="month" id="budget-month"></label>
+  <form id="budget-form">
+    <input id="budget-category" placeholder="Category" required>
+    <input id="budget-amount" placeholder="Amount (INR)" inputmode="decimal" required>
+    <button type="submit">Set budget</button>
+    <button type="button" id="budget-clear">Clear budget</button>
+  </form>
+  <p class="budget-message" id="budget-message"></p>
+  <div id="budget-rows"></div>
+</section>
+<script>
+  // loadBudgets(groupId) fills the budget rows for the month picked above.
+  (function () {
+    var monthInput = document.getElementById('budget-month');
+    monthInput.value = new Date().toISOString().slice(0, 7);
+    window.loadBudgets = async function (groupId) {
+      var res = await fetch('/api/groups/' + encodeURIComponent(groupId) + '/budgets?month=' + encodeURIComponent(monthInput.value));
+      var body = await res.json();
+      var box = document.getElementById('budget-rows');
+      box.innerHTML = '';
+      (body.budgets || []).forEach(function (r) {
+        var pct = Math.min(100, Math.round((r.spentMinor / r.budgetMinor) * 100));
+        var over = r.status === 'over-budget';
+        var label = over ? 'Over by ' + ((r.spentMinor - r.budgetMinor) / 100).toFixed(2) + ' INR' : (r.status === 'nearly-there' ? 'Nearly there' : '');
+        var row = document.createElement('div');
+        row.className = 'budget-row ' + r.status;
+        row.textContent = r.category + ' | budget ' + r.budgetDisplay + ' | spent ' + r.spentDisplay + ' | left ' + r.leftDisplay + ' ' + label;
+        var bar = document.createElement('div');
+        bar.style.width = pct + '%';
+        bar.style.height = '6px';
+        bar.style.background = over ? '#b3402f' : '#0f7a55';
+        row.appendChild(bar);
+        box.appendChild(row);
+      });
+    };
+    monthInput.addEventListener('change', function () { if (window.currentGroupId) window.loadBudgets(window.currentGroupId); });
+    var budgetMessage = document.getElementById('budget-message');
+    async function sendBudget(amount) {
+      var group = window.currentGroupId;
+      if (!group) return;
+      var category = document.getElementById('budget-category').value.trim().toLowerCase();
+      budgetMessage.textContent = '';
+      var res = await fetch('/api/groups/' + encodeURIComponent(group) + '/budgets', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: category, amount: amount, month: monthInput.value })
+      });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) { budgetMessage.textContent = body.error || 'The budget could not be saved.'; return; }
+      await window.loadBudgets(group);
+    }
+    document.getElementById('budget-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      sendBudget(document.getElementById('budget-amount').value.trim());
+    });
+    document.getElementById('budget-clear').addEventListener('click', function () { sendBudget(null); });
+  })();
+</script>
       </section>
 
       <section class="block" aria-labelledby="h-exp">

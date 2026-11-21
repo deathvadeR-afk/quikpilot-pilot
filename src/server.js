@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { addGroup, getGroup, listGroups } from "./store.js";
+import { addGroup, clearBudget, getGroup, listBudgets, listGroups, setBudget } from "./store.js";
 import {
   addExpense,
   addMember,
@@ -13,11 +13,12 @@ import {
   settleUp,
   updateExpense,
 } from "./ledger.js";
-import { validateExpense, ValidationError } from "./validation.js";
+import { validateBudgetAmount, validateCategory, validateExpense, ValidationError } from "./validation.js";
 import { BASE_CURRENCY, convertToBase } from "./exchange.js";
 import { fromMinor, toMinor } from "./money.js";
 import { listExpenses } from "./history.js";
 import { categoryTotals, memberSummary } from "./reports.js";
+import { budgetRows, currentMonth, isValidMonth } from "./budgets.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3300;
@@ -170,6 +171,46 @@ export const app = createServer(async (req, res) => {
       if (base.section === "members" && base.itemId && method === "DELETE") {
         removeMember(group, base.itemId);
         return json(res, 200, { removed: base.itemId });
+      }
+
+      if (base.section === "budgets") {
+        const viewer = req.headers["x-user-id"];
+        if (!group.members.some((m) => m.id === viewer)) {
+          return json(res, 403, { error: "Only members of this group can see or change its budgets." });
+        }
+      }
+
+      if (base.section === "budgets" && !base.itemId && method === "GET") {
+        const month = url.searchParams.get("month") ?? currentMonth();
+        if (!isValidMonth(month)) throw new ValidationError("month", "Month must look like 2026-11.");
+        const rows = budgetRows(group, listBudgets(group.id), month).map((r) => ({
+          ...r,
+          budgetDisplay: fromMinor(r.budgetMinor),
+          spentDisplay: fromMinor(r.spentMinor),
+          leftDisplay: fromMinor(r.leftMinor),
+        }));
+        return json(res, 200, { month, budgets: rows });
+      }
+
+      if (base.section === "budgets" && !base.itemId && method === "PUT") {
+        const body = await readBody(req);
+        if (body === null) return json(res, 400, { error: "Body must be valid JSON." });
+        const category = validateCategory(body.category);
+        if (body.amount === null) {
+          clearBudget(group.id, category);
+          return json(res, 200, { cleared: category });
+        }
+        const amountMinor = validateBudgetAmount(body.amount);
+        const startMonth = body.month ?? currentMonth();
+        if (!isValidMonth(startMonth)) throw new ValidationError("month", "Month must look like 2026-11.");
+        setBudget(group.id, category, amountMinor, startMonth);
+        return json(res, 200, { category, budgetMinor: amountMinor, startMonth });
+      }
+
+      if (base.section === "budgets" && base.itemId && method === "DELETE") {
+        const category = validateCategory(base.itemId);
+        clearBudget(group.id, category);
+        return json(res, 200, { cleared: category });
       }
     }
 

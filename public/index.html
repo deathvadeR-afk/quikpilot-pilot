@@ -217,6 +217,13 @@
         </div>
       </section>
 
+      <section class="block" aria-labelledby="h-del">
+        <h2 class="t" id="h-del">Recently deleted</h2>
+        <p class="sub">Expenses deleted in the last 30 days can be restored by any member.</p>
+        <div class="f"><label for="restoreAs">Restore as</label><select id="restoreAs"></select></div>
+        <ul class="hist" id="deleted"></ul>
+      </section>
+
       <section class="block" aria-labelledby="h-add">
         <h2 class="t" id="h-add">Add an expense</h2>
         <p class="sub">Who paid, how much, and how it is shared.</p>
@@ -313,6 +320,7 @@ async function loadGroup(id) {
   renderSplitDetails();
   await loadSummary();
   await loadHistory(true);
+  await loadDeleted();
 }
 
 /** Each member's balance as a bar from a zero line, and a check that the whole ledger sums to zero. */
@@ -404,6 +412,38 @@ async function loadHistory(reset) {
   document.querySelectorAll("#history button").forEach((b) => { b.onclick = () => removeExpense(b.dataset.id); });
   $("pageInfo").textContent = `Showing ${shown.length} of ${res.total}`;
   $("more").style.display = res.hasMore ? "inline-block" : "none";
+}
+
+/** Recently deleted expenses. Descriptions go through esc(), so markup is shown as text. */
+async function loadDeleted() {
+  $("restoreAs").innerHTML = current.members.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("");
+  const r = await fetch(`/api/groups/${current.id}/recently-deleted?memberId=${encodeURIComponent($("restoreAs").value)}`);
+  if (!r.ok) {
+    $("deleted").innerHTML = `<li class="empty" style="display:block">${sectionFailed("Recently deleted expenses")}</li>`;
+    return;
+  }
+  const res = await r.json();
+  $("deleted").innerHTML = res.items.length
+    ? res.items.map((e) => {
+        const deleter = current.members.find((m) => m.id === e.deletedBy)?.name ?? "unknown";
+        return `<li><div><div class="d">${esc(e.description)}</div><div class="m"><span>${esc(day(e.originalDate))}</span><span>Deleted by ${esc(deleter)} on ${esc(day(e.deletedAt))}</span></div></div>` +
+          `<button class="btn ghost sm" type="button" data-id="${esc(e.id)}">Restore</button></li>`;
+      }).join("")
+    : `<li class="empty" style="display:block">Nothing was deleted in the last 30 days.</li>`;
+  document.querySelectorAll("#deleted button").forEach((b) => { b.onclick = () => restoreExpense(b.dataset.id); });
+}
+
+async function restoreExpense(id) {
+  const r = await fetch(`/api/groups/${current.id}/recently-deleted/${id}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ memberId: $("restoreAs").value }),
+  });
+  if (!r.ok) {
+    showError("This expense can no longer be restored.");
+    return;
+  }
+  await loadGroup(current.id);
 }
 
 async function removeExpense(id) {

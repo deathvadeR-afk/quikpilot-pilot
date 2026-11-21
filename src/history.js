@@ -1,4 +1,5 @@
-import { isActive } from "./ledger.js";
+import { isActive, isRecentlyDeleted } from "./ledger.js";
+import { ValidationError } from "./validation.js";
 
 /**
  * The expense history: newest first, filterable, paged.
@@ -35,4 +36,42 @@ export function listExpenses(group, options = {}) {
     total: items.length,
     hasMore: end < items.length,
   };
+}
+
+/** Expenses deleted within the restore window. Only members of the group may see them. */
+export function listRecentlyDeleted(group, userId) {
+  assertMember(group, userId);
+  const items = group.expenses
+    .filter((e) => isRecentlyDeleted(e))
+    .map((e) => ({
+      id: e.id,
+      description: e.description,
+      originalDate: e.createdAt,
+      deletedBy: e.deletedBy ?? null,
+      deletedAt: e.deletedAt,
+    }));
+  return { items, total: items.length };
+}
+
+/**
+ * Put a recently deleted expense back in the history. Refused for non-members,
+ * for expenses that are active, and for expenses deleted outside the window.
+ */
+export function restoreExpense(group, id, userId) {
+  assertMember(group, userId);
+  const expense = group.expenses.find((e) => e.id === id);
+  if (!expense) throw new ValidationError("id", "Expense not found.");
+  if (isActive(expense)) throw new ValidationError("id", "This expense is not deleted.");
+  if (!isRecentlyDeleted(expense)) {
+    throw new ValidationError("id", "This expense was deleted more than 30 days ago and can no longer be restored.");
+  }
+  delete expense.deletedAt;
+  delete expense.deletedBy;
+  return expense;
+}
+
+function assertMember(group, userId) {
+  if (!group.members.some((m) => m.id === userId)) {
+    throw new ValidationError("memberId", "Only members of this group can do that.");
+  }
 }

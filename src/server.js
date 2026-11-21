@@ -16,7 +16,7 @@ import {
 import { validateExpense, ValidationError } from "./validation.js";
 import { BASE_CURRENCY, convertToBase } from "./exchange.js";
 import { fromMinor, toMinor } from "./money.js";
-import { listExpenses } from "./history.js";
+import { listExpenses, listRecentlyDeleted, restoreExpense } from "./history.js";
 import { categoryTotals, memberSummary } from "./reports.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -137,8 +137,22 @@ export const app = createServer(async (req, res) => {
       }
 
       if (base.section === "expenses" && base.itemId && method === "DELETE") {
-        deleteExpense(group, base.itemId);
+        const body = await readBody(req);
+        if (body === null) return json(res, 400, { error: "Body must be valid JSON." });
+        deleteExpense(group, base.itemId, body.memberId);
         return json(res, 200, { deleted: base.itemId });
+      }
+
+      if (base.section === "recently-deleted" && !base.itemId && method === "GET") {
+        const result = listRecentlyDeleted(group, url.searchParams.get("memberId"));
+        return json(res, 200, result);
+      }
+
+      if (base.section === "recently-deleted" && base.itemId && method === "POST") {
+        const body = await readBody(req);
+        if (body === null) return json(res, 400, { error: "Body must be valid JSON." });
+        const restored = restoreExpense(group, base.itemId, body.memberId);
+        return json(res, 200, display(restored));
       }
 
       if (base.section === "payments" && !base.itemId && method === "POST") {

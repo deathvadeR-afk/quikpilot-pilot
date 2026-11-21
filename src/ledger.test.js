@@ -12,6 +12,8 @@ import {
   updateExpense,
 } from "./ledger.js";
 import { ValidationError } from "./validation.js";
+import { restoreExpense } from "./ledger.js";
+import { listExpenses } from "./history.js";
 
 function group() {
   return createGroup("g", "Test", [
@@ -210,5 +212,106 @@ describe("members", () => {
 
   it("will not remove someone who is not in the group", () => {
     expect(() => removeMember(group(), "zz")).toThrow("not in this group");
+  });
+});
+
+describe("restoreExpense", () => {
+  function captureError(fn) {
+    try {
+      fn();
+    } catch (err) {
+      return err;
+    }
+    return null;
+  }
+
+  function groupWithDeleted() {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 900, paidBy: "u1", participants: ["u1", "u2", "u3"] });
+    deleteExpense(g, "exp_1");
+    return g;
+  }
+
+  it("[QP-QUIKSPL-400-1] Restoring a deleted expense returns 200 with deletedAt cleared and restoredAt set", () => {
+    const g = groupWithDeleted();
+    const before = Date.now();
+    const restored = restoreExpense(g, "exp_1", "u1");
+    const after = Date.now();
+    expect(restored.deletedAt).toBeFalsy();
+    expect(restored.restoredAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    const t = Date.parse(restored.restoredAt);
+    expect(t).toBeGreaterThanOrEqual(before);
+    expect(t).toBeLessThanOrEqual(after);
+  });
+
+  it("[QP-QUIKSPL-400-2] A restored expense is counted in balances and listed once", () => {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 900, paidBy: "u1", participants: ["u1", "u2", "u3"] });
+    addExpense(g, { description: "Taxi", amountMinor: 600, paidBy: "u2", participants: ["u1", "u2", "u3"] });
+    deleteExpense(g, "exp_2");
+    restoreExpense(g, "exp_2", "u1");
+    const b = computeBalances(g);
+    expect(b.u1).toBe(400);
+    expect(b.u2).toBe(100);
+    expect(b.u3).toBe(-500);
+    assertBalanced(b);
+    expect(listExpenses(g).items.filter((e) => e.id === "exp_2")).toHaveLength(1);
+  });
+
+  it("[QP-QUIKSPL-400-3] Restoring an expense that is not deleted returns 400 with the not-deleted error", () => {
+    const g = group();
+    addExpense(g, { description: "Dinner", amountMinor: 900, paidBy: "u1", participants: ["u1"] });
+    const err = captureError(() => restoreExpense(g, "exp_1", "u1"));
+    expect(err).toBeInstanceOf(ValidationError);
+    expect(err.message).toBe("This expense is not deleted.");
+    expect(err.field).toBe("id");
+  });
+
+  it("[QP-QUIKSPL-400-4] Restoring a second time returns the not-deleted error", () => {
+    const g = groupWithDeleted();
+    restoreExpense(g, "exp_1", "u1");
+    const firstRestoredAt = g.expenses[0].restoredAt;
+    const err = captureError(() => restoreExpense(g, "exp_1", "u1"));
+    expect(err).toBeInstanceOf(ValidationError);
+    expect(err.message).toBe("This expense is not deleted.");
+    expect(err.field).toBe("id");
+    expect(g.expenses[0].restoredAt).toBe(firstRestoredAt);
+  });
+
+  it("[QP-QUIKSPL-400-5] Restoring an unknown expense id returns 400 with the not-found error", () => {
+    const g = groupWithDeleted();
+    const err = captureError(() => restoreExpense(g, "exp_9", "u1"));
+    expect(err).toBeInstanceOf(ValidationError);
+    expect(err.message).toBe("Expense not found.");
+    expect(err.field).toBe("id");
+  });
+
+  it("[QP-QUIKSPL-400-6] An expense from another group is not restored and gets the not-found error", () => {
+    const groupA = group();
+    const groupB = group();
+    addExpense(groupB, { description: "Dinner", amountMinor: 900, paidBy: "u1", participants: ["u1"] });
+    deleteExpense(groupB, "exp_1");
+    const err = captureError(() => restoreExpense(groupA, "exp_1", "u1"));
+    expect(err).toBeInstanceOf(ValidationError);
+    expect(err.message).toBe("Expense not found.");
+    expect(err.field).toBe("id");
+    expect(groupB.expenses[0].deletedAt).toBeTruthy();
+  });
+
+  it("[QP-QUIKSPL-400-7] A non-member cannot restore an expense", () => {
+    const g = groupWithDeleted();
+    const err = captureError(() => restoreExpense(g, "exp_1", "zz"));
+    expect(err).toBeInstanceOf(ValidationError);
+    expect(g.expenses[0].deletedAt).toBeTruthy();
+  });
+
+  it("[QP-QUIKSPL-400-8] Restore leaves the expense's amount, payer and splits unchanged", () => {
+    const g = group();
+    const created = addExpense(g, { description: "Dinner", amountMinor: 900, paidBy: "u1", participants: ["u1", "u2", "u3"], splitType: "equal" });
+    const before = { ...created };
+    deleteExpense(g, "exp_1");
+    const restored = restoreExpense(g, "exp_1", "u1");
+    const { deletedAt, restoredAt, ...rest } = restored;
+    expect(rest).toEqual(before);
   });
 });

@@ -1,4 +1,4 @@
-import { computeShares } from "./splits.js";
+import { computeShares, weighted } from "./splits.js";
 import { ValidationError, validateCategory, validateDescription } from "./validation.js";
 
 /**
@@ -53,6 +53,11 @@ export function updateExpense(group, id, changes) {
   if (changes.amountMinor !== undefined) {
     expense.amountMinor = changes.amountMinor;
     if (changes.original) expense.original = changes.original;
+    if (expense.splitType === "exact" && expense.splitDetails) {
+      const oldShares = expense.participants.map((p) => expense.splitDetails[p]);
+      const newShares = weighted(changes.amountMinor, oldShares);
+      expense.splitDetails = Object.fromEntries(expense.participants.map((p, i) => [p, newShares[i]]));
+    }
   }
 
   expense.updatedAt = new Date().toISOString();

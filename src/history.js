@@ -5,6 +5,7 @@ import { isActive } from "./ledger.js";
  *
  *   memberId   expenses the member paid for or took part in
  *   category   one category
+ *   search     expenses whose description contains this text, ignoring case
  *   from, to   created between two moments, both ends included. Either may be
  *              a full ISO timestamp or a plain date (2026-10-03), and a plain
  *              date means that whole day.
@@ -14,7 +15,7 @@ import { isActive } from "./ledger.js";
 export const MAX_PAGE_SIZE = 50;
 
 export function listExpenses(group, options = {}) {
-  const { memberId, category, from, to } = options;
+  const { memberId, category, from, to, search } = options;
   const page = Math.max(1, Math.floor(Number(options.page) || 1));
   const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(Number(options.pageSize) || 10)));
 
@@ -23,6 +24,7 @@ export function listExpenses(group, options = {}) {
   if (category) items = items.filter((e) => e.category === category);
   if (from) items = items.filter((e) => e.createdAt >= from);
   if (to) items = items.filter((e) => e.createdAt <= to);
+  if (search) items = items.filter((e) => e.description.toLowerCase().includes(search.toLowerCase()));
 
   items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
 

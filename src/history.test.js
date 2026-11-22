@@ -64,4 +64,35 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-145-1] Displays correct number of items on a full page", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 12; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-${String(i + 1).padStart(2, '0')}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    expect(new Set(result.items.map(e => e.description)).size).toBe(10);
+  });
+
+  it("[QP-QUIKSPL-145-2] Displays correct number of items on a partial last page", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 12; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-${String(i + 1).padStart(2, '0')}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(result.items.length).toBe(2);
+    expect(new Set(result.items.map(e => e.description)).size).toBe(2);
+  });
+
+  it("[QP-QUIKSPL-145-3] Ensures no item is duplicated across pages", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 12; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-${String(i + 1).padStart(2, '0')}T09:00:00.000Z` });
+    }
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 }).items.map(e => e.description);
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 }).items.map(e => e.description);
+    const commonItems = page1.filter(item => page2.includes(item));
+    expect(commonItems.length).toBe(0);
+  });
 });

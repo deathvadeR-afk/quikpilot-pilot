@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { addExpense, createGroup, recordPayment } from "./ledger.js";
 import { categoryTotals, memberSummary } from "./reports.js";
+import { deleteExpense } from "./ledger.js";
 
 function group() {
   const g = createGroup("g", "Test", [
@@ -26,6 +27,14 @@ describe("categoryTotals", () => {
     addExpense(g, { description: "Old", amountMinor: 700, paidBy: "u1", participants: ["u1"] });
     expect(categoryTotals(g)).toEqual([{ category: "other", totalMinor: 700 }]);
   });
+
+  it("[QP-QUIKSPL-120-1] Excludes deleted expense from category total", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    addExpense(g, { id: "exp_1", description: "Food", amountMinor: 10000, paidBy: "u1", participants: ["u1"], category: "food" });
+    addExpense(g, { id: "exp_2", description: "Food", amountMinor: 40000, paidBy: "u1", participants: ["u1"], category: "food" });
+    deleteExpense(g, "exp_1");
+    expect(categoryTotals(g)).toEqual([{ category: "food", totalMinor: 40000 }]);
+  });
 });
 
 describe("memberSummary", () => {
@@ -42,5 +51,39 @@ describe("memberSummary", () => {
     recordPayment(g, { from: "u1", to: "u2", amountMinor: 500 });
     const a = memberSummary(g).find((r) => r.id === "u1");
     expect(a.balanceMinor).toBe(-750 + 500);
+  });
+
+  it("[QP-QUIKSPL-120-2] Excludes deleted expense from payer's 'Paid' summary", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "Alice" }]);
+    addExpense(g, { id: "exp_1", description: "Expense 1", amountMinor: 15000, paidBy: "u1", participants: ["u1"] });
+    addExpense(g, { id: "exp_2", description: "Expense 2", amountMinor: 45000, paidBy: "u1", participants: ["u1"] });
+    deleteExpense(g, "exp_1");
+    const aliceSummary = memberSummary(g).find((r) => r.id === "u1");
+    expect(aliceSummary.paidMinor).toBe(45000);
+    expect(aliceSummary.balanceMinor).toBe(0);
+  });
+
+  it("[QP-QUIKSPL-120-3] Excludes deleted expense from all members' 'Share' summaries", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "Alice" }, { id: "u2", name: "Bob" }]);
+    addExpense(g, { id: "exp_1", description: "Shared Expense 1", amountMinor: 10000, paidBy: "u1", participants: ["u1", "u2"] });
+    addExpense(g, { id: "exp_2", description: "Shared Expense 2", amountMinor: 30000, paidBy: "u1", participants: ["u1", "u2"] });
+    deleteExpense(g, "exp_1");
+    const aliceSummary = memberSummary(g).find((r) => r.id === "u1");
+    const bobSummary = memberSummary(g).find((r) => r.id === "u2");
+    expect(aliceSummary.owedMinor).toBe(15000);
+    expect(bobSummary.owedMinor).toBe(15000);
+    expect(aliceSummary.balanceMinor).toBe(15000);
+    expect(bobSummary.balanceMinor).toBe(-15000);
+  });
+
+  it("[QP-QUIKSPL-120-4] Correctly updates balance after deleting an expense", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "Charlie" }]);
+    addExpense(g, { id: "exp_1", description: "Expense 1", amountMinor: 5000, paidBy: "u1", participants: ["u1"] });
+    addExpense(g, { id: "exp_2", description: "Expense 2", amountMinor: 30000, paidBy: "u1", participants: ["u1"] });
+    deleteExpense(g, "exp_1");
+    const charlieSummary = memberSummary(g).find((r) => r.id === "u1");
+    expect(charlieSummary.paidMinor).toBe(30000);
+    expect(charlieSummary.owedMinor).toBe(30000);
+    expect(charlieSummary.balanceMinor).toBe(0);
   });
 });

@@ -29,10 +29,10 @@ export function listExpenses(group, options = {}) {
   const start = (page - 1) * pageSize;
   const end = start + pageSize;
   return {
-    items: items.slice(start, end + 1),
+    items: items.slice(start, end),
     page,
     pageSize,
     total: items.length,
-    hasMore: end < items.length,
+    hasMore: end < items.length - 1,
   };
 }

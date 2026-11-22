@@ -64,4 +64,84 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-162-1] Displays correct number of items on the first page with overflow", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 12; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-01T09:00:0${i}Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    expect(result.total).toBe(12);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(true);
+    const descriptions = result.items.map(e => e.description);
+    expect(new Set(descriptions).size).toBe(10);
+  });
+
+  it("[QP-QUIKSPL-162-2] Displays correct number of items on the second page with overflow", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    const expenses = [];
+    for (let i = 0; i < 12; i++) {
+      expenses.push(addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-01T09:00:0${i}Z` }));
+    }
+    const firstPage = listExpenses(g, { page: 1, pageSize: 10 });
+    const secondPage = listExpenses(g, { page: 2, pageSize: 10 });
+
+    expect(secondPage.items.length).toBe(2);
+    expect(secondPage.total).toBe(12);
+    expect(secondPage.page).toBe(2);
+    expect(secondPage.hasMore).toBe(false);
+
+    const firstPageDescriptions = firstPage.items.map(e => e.description);
+    const secondPageDescriptions = secondPage.items.map(e => e.description);
+    secondPageDescriptions.forEach(desc => {
+      expect(firstPageDescriptions).not.toContain(desc);
+    });
+    expect(new Set(secondPageDescriptions).size).toBe(2);
+  });
+
+  it("[QP-QUIKSPL-162-3] Displays all items correctly when total items is less than page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 5; i++) {
+      addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-01T09:00:0${i}Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(5);
+    expect(result.total).toBe(5);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(false);
+    const descriptions = result.items.map(e => e.description);
+    expect(new Set(descriptions).size).toBe(5);
+  });
+
+  it("[QP-QUIKSPL-162-4] Displays all items correctly when total items is an exact multiple of page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    const allDescriptions = [];
+    for (let i = 0; i < 20; i++) {
+      const expense = addExpense(g, { description: `Expense ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-01T09:00:${i < 10 ? '0' + i : i}Z` });
+      allDescriptions.push(expense.description);
+    }
+
+    const firstPage = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(firstPage.items.length).toBe(10);
+    expect(firstPage.total).toBe(20);
+    expect(firstPage.page).toBe(1);
+    expect(firstPage.hasMore).toBe(true);
+    const firstPageDescriptions = firstPage.items.map(e => e.description);
+    expect(new Set(firstPageDescriptions).size).toBe(10);
+
+    const secondPage = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(secondPage.items.length).toBe(10);
+    expect(secondPage.total).toBe(20);
+    expect(secondPage.page).toBe(2);
+    expect(secondPage.hasMore).toBe(false);
+    const secondPageDescriptions = secondPage.items.map(e => e.description);
+    expect(new Set(secondPageDescriptions).size).toBe(10);
+
+    const combinedDescriptions = [...firstPageDescriptions, ...secondPageDescriptions];
+    expect(combinedDescriptions.length).toBe(20);
+    expect(new Set(combinedDescriptions).size).toBe(20);
+    expect(combinedDescriptions.sort()).toEqual(allDescriptions.sort());
+  });
 });

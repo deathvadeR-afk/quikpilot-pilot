@@ -64,4 +64,53 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-141-1] Displays correct number of items on the first page when total items exceed page size by one", () => {
+    const g = group();
+    for (let i = 0; i < 8; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"] });
+    }
+    // Total items: 3 (from group()) + 8 = 11
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items).toHaveLength(10);
+    expect(result.total).toBe(11);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(true);
+  });
+
+  it("[QP-QUIKSPL-141-2] Displays correct number of items on the second page when total items exceed page size by one", () => {
+    const g = group();
+    for (let i = 0; i < 8; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"] });
+    }
+    // Total items: 3 (from group()) + 8 = 11
+    const result = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(result.items).toHaveLength(1);
+    expect(result.total).toBe(11);
+    expect(result.page).toBe(2);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-141-3] Displays correct number of items on the last page when total items are an exact multiple of page size", () => {
+    const g = group();
+    for (let i = 0; i < 17; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"] });
+    }
+    // Total items: 3 (from group()) + 17 = 20
+    const result = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(result.items).toHaveLength(10);
+    expect(result.total).toBe(20);
+    expect(result.page).toBe(2);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-141-4] Displays correct number of items on a single page when total items are less than page size", () => {
+    const g = group();
+    // Total items: 3 (from group())
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items).toHaveLength(3);
+    expect(result.total).toBe(3);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(false);
+  });
 });

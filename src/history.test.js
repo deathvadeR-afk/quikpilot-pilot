@@ -64,4 +64,53 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-157-1] Displays correct number of items on first page with overflow", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-04T09:00:0${i}Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    expect(result.total).toBe(12);
+    expect(result.hasMore).toBe(true);
+  });
+
+  it("[QP-QUIKSPL-157-2] Displays correct number of items on subsequent page with overflow", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-04T09:00:0${i}Z` });
+    }
+    const resultPage1 = listExpenses(g, { page: 1, pageSize: 10 });
+    const resultPage2 = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(resultPage2.items.length).toBe(2);
+    expect(resultPage2.total).toBe(12);
+    expect(resultPage2.hasMore).toBe(false);
+    const page1Descriptions = resultPage1.items.map(e => e.description);
+    const page2Descriptions = resultPage2.items.map(e => e.description);
+    page2Descriptions.forEach(desc => {
+      expect(page1Descriptions).not.toContain(desc);
+    });
+  });
+
+  it("[QP-QUIKSPL-157-3] Handles list with fewer items than page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    addExpense(g, { description: "One", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-01T09:00:00.000Z" });
+    addExpense(g, { description: "Two", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-02T09:00:00.000Z" });
+    addExpense(g, { description: "Three", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-03T09:00:00.000Z" });
+    addExpense(g, { description: "Four", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-04T09:00:00.000Z" });
+    addExpense(g, { description: "Five", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-05T09:00:00.000Z" });
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(5);
+    expect(result.total).toBe(5);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-157-4] Handles empty expense list", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(0);
+    expect(result.total).toBe(0);
+    expect(result.hasMore).toBe(false);
+  });
 });

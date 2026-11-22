@@ -64,4 +64,60 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-151-1] Correctly paginates when total items are not a multiple of page size", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-04T09:00:0${i}Z` });
+    }
+    // Total 3 (initial) + 9 (extra) = 12 items
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(page1.items.length).toBe(10);
+    expect(page1.total).toBe(12);
+    expect(page1.page).toBe(1);
+    expect(page1.hasMore).toBe(true);
+
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(page2.items.length).toBe(2);
+    expect(page2.total).toBe(12);
+    expect(page2.page).toBe(2);
+    expect(page2.hasMore).toBe(false);
+
+    const allItems = listExpenses(g, { pageSize: 12 }).items.map(e => e.description);
+    const page1Descriptions = page1.items.map(e => e.description);
+    const page2Descriptions = page2.items.map(e => e.description);
+
+    expect(new Set([...page1Descriptions, ...page2Descriptions]).size).toBe(12);
+    expect(page1Descriptions.every(desc => allItems.includes(desc))).toBe(true);
+    expect(page2Descriptions.every(desc => allItems.includes(desc))).toBe(true);
+    expect(page1Descriptions.some(desc => page2Descriptions.includes(desc))).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-151-2] Correctly paginates when total items are a multiple of page size", () => {
+    const g = group();
+    for (let i = 0; i < 17; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-04T10:00:0${i}Z` });
+    }
+    // Total 3 (initial) + 17 (extra) = 20 items
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(page1.items.length).toBe(10);
+    expect(page1.total).toBe(20);
+    expect(page1.page).toBe(1);
+    expect(page1.hasMore).toBe(true);
+
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(page2.items.length).toBe(10);
+    expect(page2.total).toBe(20);
+    expect(page2.page).toBe(2);
+    expect(page2.hasMore).toBe(false);
+
+    const allItems = listExpenses(g, { pageSize: 20 }).items.map(e => e.description);
+    const page1Descriptions = page1.items.map(e => e.description);
+    const page2Descriptions = page2.items.map(e => e.description);
+
+    expect(new Set([...page1Descriptions, ...page2Descriptions]).size).toBe(20);
+    expect(page1Descriptions.every(desc => allItems.includes(desc))).toBe(true);
+    expect(page2Descriptions.every(desc => allItems.includes(desc))).toBe(true);
+    expect(page1Descriptions.some(desc => page2Descriptions.includes(desc))).toBe(false);
+  });
 });

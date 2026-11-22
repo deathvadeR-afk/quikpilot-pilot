@@ -64,4 +64,38 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-427-1] lists the Goa trip's two expenses from 2 October for a same-day range", () => {
+    const g = createGroup("goa", "Goa trip", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    const add = (description, createdAt) =>
+      addExpense(g, { description, amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], category: "food", createdAt });
+    add("Breakfast", "2026-10-01T08:00:00.000Z");
+    add("Lunch", "2026-10-02T12:00:00.000Z");
+    add("Farewell drinks", "2026-10-02T20:00:00.000Z");
+    const result = listExpenses(g, { from: "2026-10-02", to: "2026-10-02" });
+    expect(result.items.map((e) => e.description)).toEqual(["Farewell drinks", "Lunch"]);
+  });
+
+  it("[QP-QUIKSPL-427-2] includes an expense created late on the plain end date", () => {
+    const g = createGroup("goa", "Goa trip", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Late dinner", amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], category: "food", createdAt: "2026-10-02T23:30:00.000Z" });
+    const result = listExpenses(g, { to: "2026-10-02" });
+    expect(result.items.map((e) => e.description)).toContain("Late dinner");
+  });
+
+  it("[QP-QUIKSPL-427-3] leaves out an expense created at the start of the next UTC day", () => {
+    const g = createGroup("goa", "Goa trip", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Midnight taxi", amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], category: "travel", createdAt: "2026-10-03T00:00:00.000Z" });
+    const result = listExpenses(g, { to: "2026-10-02" });
+    expect(result.items.map((e) => e.description)).not.toContain("Midnight taxi");
+  });
 });

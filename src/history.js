@@ -13,6 +13,8 @@ import { isActive } from "./ledger.js";
  */
 export const MAX_PAGE_SIZE = 50;
 
+const PLAIN_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
 export function listExpenses(group, options = {}) {
   const { memberId, category, from, to } = options;
   const page = Math.max(1, Math.floor(Number(options.page) || 1));
@@ -22,7 +24,16 @@ export function listExpenses(group, options = {}) {
   if (memberId) items = items.filter((e) => e.paidBy === memberId || e.participants.includes(memberId));
   if (category) items = items.filter((e) => e.category === category);
   if (from) items = items.filter((e) => e.createdAt >= from);
-  if (to) items = items.filter((e) => e.createdAt <= to);
+  if (to) {
+    const toEnd = PLAIN_DATE.test(to) ? Date.parse(`${to}T00:00:00.000Z`) : NaN;
+    if (Number.isNaN(toEnd)) {
+      items = items.filter((e) => e.createdAt <= to);
+    } else {
+      // A plain date is the whole UTC day: stop before 00:00 UTC of the next day.
+      const nextDay = new Date(toEnd + 86400000).toISOString();
+      items = items.filter((e) => e.createdAt < nextDay);
+    }
+  }
 
   items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
 

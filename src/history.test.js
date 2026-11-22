@@ -64,4 +64,48 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-428-1] Lists the Goa trip's 2 October expenses when from and to are both that plain date", () => {
+    const g = createGroup("goa", "Goa trip", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Farewell drinks", amountMinor: 500, paidBy: "u1", participants: ["u1", "u2"], category: "food", createdAt: "2026-10-02T20:00:00.000Z" });
+    addExpense(g, { description: "Lunch", amountMinor: 300, paidBy: "u2", participants: ["u1", "u2"], category: "food", createdAt: "2026-10-02T13:00:00.000Z" });
+    const names = listExpenses(g, { from: "2026-10-02", to: "2026-10-02" }).items.map((e) => e.description);
+    expect(names).toHaveLength(2);
+    expect(names).toContain("Farewell drinks");
+    expect(names).toContain("Lunch");
+    expect(new Set(names).size).toBe(2);
+  });
+
+  it("[QP-QUIKSPL-428-2] Includes an expense created in the last millisecond of a plain-date end day", () => {
+    const g = createGroup("late", "Late", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Late night", amountMinor: 200, paidBy: "u1", participants: ["u1", "u2"], category: "food", createdAt: "2026-10-02T23:59:59.999Z" });
+    const names = listExpenses(g, { to: "2026-10-02" }).items.map((e) => e.description);
+    expect(names).toContain("Late night");
+  });
+
+  it("[QP-QUIKSPL-428-3] Leaves out an expense created at midnight UTC on the day after a plain-date end", () => {
+    const g = createGroup("midnight", "Midnight", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Next day", amountMinor: 200, paidBy: "u1", participants: ["u1", "u2"], category: "food", createdAt: "2026-10-03T00:00:00.000Z" });
+    expect(listExpenses(g, { to: "2026-10-02" }).items).toHaveLength(0);
+  });
+
+  it("[QP-QUIKSPL-428-4] Filters up to a full timestamp, inclusive, as before", () => {
+    const g = createGroup("ts", "Timestamps", [
+      { id: "u1", name: "A" },
+      { id: "u2", name: "B" },
+    ]);
+    addExpense(g, { description: "Expense A", amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], category: "food", createdAt: "2026-10-02T08:00:00.000Z" });
+    addExpense(g, { description: "Expense B", amountMinor: 100, paidBy: "u1", participants: ["u1", "u2"], category: "food", createdAt: "2026-10-02T10:00:00.000Z" });
+    const names = listExpenses(g, { to: "2026-10-02T09:00:00.000Z" }).items.map((e) => e.description);
+    expect(names).toEqual(["Expense A"]);
+  });
 });

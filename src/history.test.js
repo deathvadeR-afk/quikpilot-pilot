@@ -64,4 +64,59 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-167-1] Displays exactly page size items on the first page when more items exist", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    expect(result.total).toBe(12);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(true);
+  });
+
+  it("[QP-QUIKSPL-167-2] Displays remaining items on subsequent pages without duplication", () => {
+    const g = group();
+    const expenseDescriptions = [];
+    for (let i = 0; i < 9; i++) {
+      const description = `Extra ${i}`;
+      addExpense(g, { description, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+      expenseDescriptions.push(description);
+    }
+    const firstPage = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(firstPage.items.length).toBe(10);
+    expect(firstPage.hasMore).toBe(true);
+
+    const secondPage = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(secondPage.items.length).toBe(2);
+    expect(secondPage.total).toBe(12);
+    expect(secondPage.page).toBe(2);
+    expect(secondPage.hasMore).toBe(false);
+
+    const allItems = [...firstPage.items.map(e => e.id), ...secondPage.items.map(e => e.id)];
+    expect(new Set(allItems).size).toBe(allItems.length);
+  });
+
+  it("[QP-QUIKSPL-167-3] Handles exact page size number of items on a single page", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    for (let i = 0; i < 10; i++) {
+      addExpense(g, { description: `Item ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${1 + i}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    expect(result.total).toBe(10);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-167-4] Handles fewer than page size items on the first page", () => {
+    const g = group();
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(3);
+    expect(result.total).toBe(3);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(false);
+  });
 });

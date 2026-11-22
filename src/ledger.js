@@ -11,6 +11,9 @@ import { ValidationError, validateCategory, validateDescription } from "./valida
  *
  * Deleting an expense is soft: it stays in `group.expenses` with a `deletedAt`
  * timestamp, so ids stay unique and an accidental delete can be traced.
+ *
+ * Restoring an expense clears `deletedAt` and records `restoredAt`, so it
+ * counts in balances and the expense list again.
  */
 
 export function createGroup(id, name, members) {
@@ -65,6 +68,17 @@ export function deleteExpense(group, id) {
     throw new ValidationError("id", "This expense is already deleted.");
   }
   expense.deletedAt = new Date().toISOString();
+  return expense;
+}
+
+/** Undo a soft delete: the expense counts in balances and the list again. */
+export function restoreExpense(group, id) {
+  const expense = findExpense(group, id);
+  if (!expense.deletedAt) {
+    throw new ValidationError("id", "This expense is not deleted.");
+  }
+  delete expense.deletedAt;
+  expense.restoredAt = new Date().toISOString();
   return expense;
 }
 

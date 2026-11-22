@@ -64,4 +64,83 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-164-1] Displays correct number of items on first page with overflow", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    // Total 3 existing + 9 new = 12 expenses
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    expect(result.total).toBe(12);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(true);
+  });
+
+  it("[QP-QUIKSPL-164-2] Displays correct number of items on second page with overflow", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    // Total 3 existing + 9 new = 12 expenses
+    const firstPage = listExpenses(g, { page: 1, pageSize: 10 });
+    const secondPage = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(secondPage.items.length).toBe(2);
+    expect(secondPage.total).toBe(12);
+    expect(secondPage.page).toBe(2);
+    expect(secondPage.hasMore).toBe(false);
+    const firstPageDescriptions = new Set(firstPage.items.map(e => e.description));
+    secondPage.items.forEach(item => {
+      expect(firstPageDescriptions.has(item.description)).toBe(false);
+    });
+  });
+
+  it("[QP-QUIKSPL-164-3] Handles exact multiple of page size on last page", () => {
+    const g = group();
+    for (let i = 0; i < 17; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    // Total 3 existing + 17 new = 20 expenses
+    const secondPage = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(secondPage.items.length).toBe(10);
+    expect(secondPage.total).toBe(20);
+    expect(secondPage.page).toBe(2);
+    expect(secondPage.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-164-4] Handles total expenses less than page size", () => {
+    const g = createGroup("g", "Test", [{ id: "u1", name: "A" }]);
+    addExpense(g, { description: "One", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-01T09:00:00.000Z" });
+    addExpense(g, { description: "Two", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-02T09:00:00.000Z" });
+    addExpense(g, { description: "Three", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-03T09:00:00.000Z" });
+    addExpense(g, { description: "Four", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-04T09:00:00.000Z" });
+    addExpense(g, { description: "Five", amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: "2026-10-05T09:00:00.000Z" });
+    // Total 5 expenses
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(5);
+    expect(result.total).toBe(5);
+    expect(result.page).toBe(1);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-164-5] Ensures no repetition when total items is one more than page size", () => {
+    const g = group();
+    for (let i = 0; i < 8; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "food", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    // Total 3 existing + 8 new = 11 expenses
+    const firstPage = listExpenses(g, { page: 1, pageSize: 10 });
+    const secondPage = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(firstPage.items.length).toBe(10);
+    expect(secondPage.items.length).toBe(1);
+    expect(firstPage.total).toBe(11);
+    expect(secondPage.total).toBe(11);
+    expect(firstPage.hasMore).toBe(true);
+    expect(secondPage.hasMore).toBe(false);
+    const firstPageDescriptions = new Set(firstPage.items.map(e => e.description));
+    secondPage.items.forEach(item => {
+      expect(firstPageDescriptions.has(item.description)).toBe(false);
+    });
+  });
 });

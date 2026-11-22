@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { addExpense, createGroup, deleteExpense } from "./ledger.js";
+import { createGroup as createEmptyGroup } from "./ledger.js";
 import { listExpenses, MAX_PAGE_SIZE } from "./history.js";
 
 function group() {
@@ -63,5 +64,67 @@ describe("listExpenses", () => {
 
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
+  });
+
+  it("[QP-QUIKSPL-176-1] Displays correct number of items on the first page with exact page size", () => {
+    const g = group();
+    for (let i = 0; i < 7; i++) {
+      addExpense(g, { description: `Item ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"] });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    const uniqueItems = new Set(result.items.map(item => item.id));
+    expect(uniqueItems.size).toBe(10);
+  });
+
+  it("[QP-QUIKSPL-176-2] Displays correct number of items on the first page with fewer than page size", () => {
+    const g = group();
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(3);
+    const uniqueItems = new Set(result.items.map(item => item.id));
+    expect(uniqueItems.size).toBe(3);
+  });
+
+  it("[QP-QUIKSPL-176-3] Displays correct number of items on the first page with more than page size", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Item ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"] });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    const uniqueItems = new Set(result.items.map(item => item.id));
+    expect(uniqueItems.size).toBe(10);
+  });
+
+  it("[QP-QUIKSPL-176-4] Displays correct number of items on the second page with remaining items", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Item ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"] });
+    }
+    const firstPage = listExpenses(g, { page: 1, pageSize: 10 });
+    const secondPage = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(secondPage.items.length).toBe(2);
+    const firstPageIds = new Set(firstPage.items.map(item => item.id));
+    const secondPageIds = new Set(secondPage.items.map(item => item.id));
+    secondPageIds.forEach(id => expect(firstPageIds.has(id)).toBe(false));
+  });
+
+  it("[QP-QUIKSPL-176-5] Ensures no item repetition across pages", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Item ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"] });
+    }
+    const firstPage = listExpenses(g, { page: 1, pageSize: 10 });
+    const secondPage = listExpenses(g, { page: 2, pageSize: 10 });
+    const allItems = [...firstPage.items, ...secondPage.items];
+    expect(allItems.length).toBe(12);
+    const uniqueItems = new Set(allItems.map(item => item.id));
+    expect(uniqueItems.size).toBe(12);
+  });
+
+  it("[QP-QUIKSPL-176-6] Handles empty expense list gracefully", () => {
+    const g = createGroup("empty", "Empty Group", []);
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(0);
   });
 });

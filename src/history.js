@@ -6,8 +6,9 @@ import { isActive } from "./ledger.js";
  *   memberId   expenses the member paid for or took part in
  *   category   one category
  *   from, to   created between two moments, both ends included. Either may be
- *              a full ISO timestamp or a plain date (2026-10-03), and a plain
- *              date means that whole day.
+ *              a full ISO timestamp or a plain date (2026-10-03). A plain date
+ *              as `to` means the whole UTC day, up to 23:59:59.999; as `from`
+ *              it is midnight UTC at the start of that day. A full timestamp is compared as given, at either end.
  *   page       1-based
  *   pageSize   at most 50
  */
@@ -22,7 +23,8 @@ export function listExpenses(group, options = {}) {
   if (memberId) items = items.filter((e) => e.paidBy === memberId || e.participants.includes(memberId));
   if (category) items = items.filter((e) => e.category === category);
   if (from) items = items.filter((e) => e.createdAt >= from);
-  if (to) items = items.filter((e) => e.createdAt <= to);
+  const plainDateTo = /^\d{4}-\d{2}-\d{2}$/.test(to);
+  if (to) items = items.filter((e) => e.createdAt <= (plainDateTo ? `${to}T23:59:59.999Z` : to));
 
   items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
 

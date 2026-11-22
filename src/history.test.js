@@ -64,4 +64,57 @@ describe("listExpenses", () => {
   it("falls back to a page size of 10", () => {
     expect(listExpenses(group()).pageSize).toBe(10);
   });
+
+  it("[QP-QUIKSPL-168-1] Displays exactly pageSize items on a full page", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "other", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(10);
+    const uniqueItems = new Set(result.items.map(item => item.id));
+    expect(uniqueItems.size).toBe(10);
+  });
+
+  it("[QP-QUIKSPL-168-2] Displays remaining items on the last page when less than pageSize", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "other", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const result = listExpenses(g, { page: 2, pageSize: 10 });
+    expect(result.items.length).toBe(2);
+    const uniqueItems = new Set(result.items.map(item => item.id));
+    expect(uniqueItems.size).toBe(2);
+  });
+
+  it("[QP-QUIKSPL-168-3] No item is duplicated across the first and second pages", () => {
+    const g = group();
+    for (let i = 0; i < 9; i++) {
+      addExpense(g, { description: `Extra ${i}`, amountMinor: 100, paidBy: "u1", participants: ["u1"], category: "other", createdAt: `2026-10-0${4 + i}T09:00:00.000Z` });
+    }
+    const page1 = listExpenses(g, { page: 1, pageSize: 10 }).items;
+    const page2 = listExpenses(g, { page: 2, pageSize: 10 }).items;
+    const page1Ids = new Set(page1.map(item => item.id));
+    const page2Ids = new Set(page2.map(item => item.id));
+    page1Ids.forEach(id => expect(page2Ids.has(id)).toBe(false));
+    expect(page2.some(item => item.description === "Extra 7")).toBe(true);
+  });
+
+  it("[QP-QUIKSPL-168-4] Handles an empty expense list correctly", () => {
+    const g = createGroup("empty", "Empty Group", []);
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(0);
+    expect(result.total).toBe(0);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it("[QP-QUIKSPL-168-5] Handles an expense list with items fewer than pageSize on a single page", () => {
+    const g = group(); // This group has 3 items
+    const result = listExpenses(g, { page: 1, pageSize: 10 });
+    expect(result.items.length).toBe(3);
+    expect(result.total).toBe(3);
+    expect(result.hasMore).toBe(false);
+    const uniqueItems = new Set(result.items.map(item => item.id));
+    expect(uniqueItems.size).toBe(3);
+  });
 });
